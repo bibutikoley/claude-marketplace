@@ -27,7 +27,7 @@ access the server needs.
 Standalone alternative (without the marketplace):
 
 ```bash
-claude mcp add apple-notes -s user -- uv run --project <path-to>/plugins/apple-notes main.py
+claude mcp add apple-notes -s user -- uvx --from <path-to>/plugins/apple-notes apple-notes-mcp
 ```
 
 ## Contents

@@ -34,7 +34,7 @@ Via this marketplace (recommended):
 Or standalone, without the marketplace:
 
 ```bash
-claude mcp add apple-notes -s user -- uv run --project <path-to>/plugins/apple-notes main.py
+claude mcp add apple-notes -s user -- uvx --from <path-to>/plugins/apple-notes apple-notes-mcp
 ```
 
 Then restart Claude Code (or `/mcp` to reload), and on the first tool call click
