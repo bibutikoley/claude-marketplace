@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+      - name: Validate marketplace manifests
+        run: |
+          for f in ../.claude-plugin/marketplace.json plugins/apple-notes/.claude-plugin/plugin.json plugins/apple-notes/.mcp.json; do
+            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))" && echo "OK: $f"
+          done
+        working-directory: .
+
+      - name: Production build
+        run: npm run build

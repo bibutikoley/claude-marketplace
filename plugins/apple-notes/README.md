@@ -57,6 +57,30 @@ Notes"). That one grant is all the access the server needs.
 - Plaintext converts newlines to `<br>`; `&`, `<`, `>` are HTML-escaped.
   Body writes are HTML under the hood, matching how Notes stores them.
 
+## Access scope
+
+Set `APPLE_NOTES_MCP_ALLOWED_FOLDERS` to restrict every tool to a folder
+allowlist (comma-separated names or full paths). Unset = unrestricted.
+
+```bash
+APPLE_NOTES_MCP_ALLOWED_FOLDERS="iCloud/Work,iCloud/Personal" claude
+```
+
+Or for a standalone install:
+
+```bash
+claude mcp add apple-notes -s user \
+  -e APPLE_NOTES_MCP_ALLOWED_FOLDERS="iCloud/Work,iCloud/Personal" \
+  -- uvx --from <path-to>/plugins/apple-notes apple-notes-mcp
+```
+
+Entries match by full path or leaf name (`Work` matches any folder whose
+last segment is `Work` — prefer full paths like `iCloud/Work` to be
+precise). In scope: `list_notes` / `search_notes` / `list_folders` only
+return allowed folders; anything outside fails with an "outside the
+configured access scope" error. `create_note` then requires an explicit
+`folder`. Confirm the active scope any time with `health_check`.
+
 ## Runtime notes
 
 - macOS + Notes.app only; Node not required, Python ≥ 3.12 via uv.

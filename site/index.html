@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Claude Code plugin marketplace: Apple Notes CRUD via MCP. Install with /plugin install apple-notes@apple-notes-mcp." />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <title>claude-marketplace — Claude Code plugins</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="scene" aria-hidden="true"></canvas>
+
+    <div class="content">
+      <header class="hero">
+        <p class="eyebrow">Claude Code plugin marketplace</p>
+        <h1>claude&#8209;marketplace</h1>
+        <p class="lede">
+          Give Claude Code CRUD access to Apple Notes on macOS — live,
+          local, no index, no cloud. macOS Automation permission is the
+          only grant the server ever needs.
+        </p>
+        <div class="install">
+          <code id="install-cmd">/plugin marketplace add bibutikoley/claude-marketplace&#10;/plugin install apple-notes@apple-notes-mcp</code>
+          <button id="copy-btn" type="button">Copy</button>
+        </div>
+      </header>
+
+      <main>
+        <section aria-labelledby="plugins-h">
+          <h2 id="plugins-h">Plugins</h2>
+          <article class="card">
+            <div class="card-head">
+              <h3>apple-notes</h3>
+              <span class="version">v0.1.0</span>
+            </div>
+            <p>
+              MCP server giving Claude Code CRUD access to Apple Notes —
+              Python + uv + the official <code>mcp</code> SDK, driving
+              Notes.app through JXA. Notes.app is the source of truth,
+              queried live on every call.
+            </p>
+            <ul class="tools" aria-label="Tools">
+              <li>list_notes</li>
+              <li>get_note</li>
+              <li>create_note</li>
+              <li>update_note</li>
+              <li>append_note</li>
+              <li>delete_note</li>
+              <li>search_notes</li>
+              <li>list_folders</li>
+              <li>create_folder</li>
+              <li>delete_folder</li>
+              <li>health_check</li>
+            </ul>
+          </article>
+        </section>
+
+        <section aria-labelledby="scope-h">
+          <h2 id="scope-h">Access scope</h2>
+          <p>
+            Restrict every tool to a folder allowlist with
+            <code>APPLE_NOTES_MCP_ALLOWED_FOLDERS</code> (comma-separated
+            names or full paths). Unset means unrestricted. Confirm the
+            active scope any time with <code>health_check</code>.
+          </p>
+          <pre><code>APPLE_NOTES_MCP_ALLOWED_FOLDERS="iCloud/Work,iCloud/Personal" claude</code></pre>
+        </section>
+
+        <section aria-labelledby="req-h">
+          <h2 id="req-h">Requirements</h2>
+          <ul>
+            <li>macOS with Notes.app</li>
+            <li><code>uv</code> installed (Python ≥ 3.12)</li>
+          </ul>
+        </section>
+      </main>
+
+      <footer>
+        <a href="https://github.com/bibutikoley/claude-marketplace">github.com/bibutikoley/claude-marketplace</a>
+        <span> · MIT</span>
+      </footer>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
