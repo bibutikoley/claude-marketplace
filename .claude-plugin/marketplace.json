@@ -1,0 +1,20 @@
+{
+  "name": "apple-notes-mcp",
+  "description": "Claude Code plugin giving CRUD access to Apple Notes on macOS via AppleScript",
+  "owner": {
+    "name": "Bibuti Koley",
+    "email": "bibutikoley@outlook.com"
+  },
+  "plugins": [
+    {
+      "name": "apple-notes",
+      "source": "./plugins/apple-notes",
+      "description": "MCP server giving Claude Code CRUD access to Apple Notes via AppleScript",
+      "version": "0.1.0",
+      "author": {
+        "name": "Bibuti Koley",
+        "email": "bibutikoley@outlook.com"
+      }
+    }
+  ]
+}

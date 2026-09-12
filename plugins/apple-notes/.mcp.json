@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "apple-notes": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "${CLAUDE_PLUGIN_ROOT}",
+        "${CLAUDE_PLUGIN_ROOT}/main.py"
+      ]
+    }
+  }
+}

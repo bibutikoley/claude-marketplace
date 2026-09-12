@@ -24,8 +24,17 @@ live on every call, all locally.
 
 ## Install
 
+Via this marketplace (recommended):
+
 ```bash
-claude mcp add apple-notes -s user -- uv run --project /Users/bibuti/Developer/apple-notes-mcp main.py
+/plugin marketplace add bibutikoley/claude-marketplace
+/plugin install apple-notes@apple-notes-mcp
+```
+
+Or standalone, without the marketplace:
+
+```bash
+claude mcp add apple-notes -s user -- uv run --project <path-to>/plugins/apple-notes main.py
 ```
 
 Then restart Claude Code (or `/mcp` to reload), and on the first tool call click
