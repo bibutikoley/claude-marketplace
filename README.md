@@ -1,6 +1,6 @@
 # claude-marketplace
 
-**[Live demo →](https://bibutikoley.github.io/claude-marketplace/)**
+[![Home Page](https://img.shields.io/badge/Home_Page-0b0e14?style=for-the-badge)](https://bibutikoley.github.io/claude-marketplace/)
 
 Claude Code plugin marketplace. Currently ships one plugin: **apple-notes** —
 an MCP server giving CRUD access to Apple Notes on macOS
@@ -79,19 +79,7 @@ and Codex TOML variants): see
 | `.claude-plugin/marketplace.json` | Marketplace catalog |
 | `plugins/apple-notes/` | The plugin (MCP server + `.mcp.json` + manifest) |
 | `plugins/apple-notes/README.md` | Tool reference and behavior notes |
-| `site/` | Landing page (Vite + Three.js, deployed to GitHub Pages) |
-
-## Site development
-
-```bash
-cd site
-npm install
-npm run dev       # http://127.0.0.1:5173
-npm run build     # production build → site/dist/
-```
-
-Pushes to `main` deploy `site/dist/` to GitHub Pages automatically
-(Settings → Pages → Source: "GitHub Actions" on first setup).
+| `site/` | Landing page (Vite + Three.js, deployed to GitHub Pages — see [site/README.md](site/README.md)) |
 
 ## Versioning
 
