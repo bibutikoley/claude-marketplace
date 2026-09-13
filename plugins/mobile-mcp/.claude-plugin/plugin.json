@@ -1,0 +1,14 @@
+{
+  "name": "mobile-mcp",
+  "displayName": "Mobile MCP",
+  "description": "Unified MCP server for cross-platform mobile device control (Android via ADB + iOS via Xcode simctl/devicectl)",
+  "version": "0.1.0",
+  "author": {
+    "name": "Bibuti Koley",
+    "email": "bibutikoley@outlook.com"
+  },
+  "homepage": "https://github.com/bibutikoley/claude-marketplace",
+  "repository": "https://github.com/bibutikoley/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["android", "ios", "adb", "simctl", "devicectl", "mobile", "emulator", "simulator", "mcp"]
+}

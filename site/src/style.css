@@ -470,6 +470,34 @@ h2 {
   padding: 0.1rem 0.6rem;
 }
 
+.platform-tag {
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(255, 214, 10, 0.08);
+  border: 1px solid rgba(255, 214, 10, 0.28);
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  margin-left: auto;
+}
+
+.card-link {
+  margin: 0.9rem 0 0;
+  font-size: 0.88rem;
+}
+
+.card-link a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.card-link a:hover {
+  text-decoration: underline;
+}
+
 .tools {
   list-style: none;
   display: flex;
