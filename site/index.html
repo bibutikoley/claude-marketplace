@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="MCP server giving any AI agent CRUD access to Apple Notes on macOS. Claude Code plugin, or stdio config for Claude Desktop, Cursor, VS Code, Windsurf, Cline, Roo, Codex, Gemini." />
+    <meta name="description" content="Plugin marketplace for AI coding agents. Install superpowers with one command — starting with Apple Notes CRUD on macOS, via MCP for Claude Code, Cursor, VS Code, Windsurf, Cline, Roo, Codex, Gemini." />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
-    <title>claude-marketplace — Apple Notes MCP for any agent</title>
+    <title>claude-marketplace — Plugin marketplace for AI agents</title>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
@@ -27,19 +27,20 @@
 
     <div class="content" id="top">
       <header class="hero">
-        <p class="eyebrow">Apple Notes MCP · works with any agent</p>
+        <p class="eyebrow">Plugin marketplace for AI coding agents</p>
         <h1>claude&#8209;marketplace</h1>
         <p class="lede">
-          Give Claude Code — or Claude Desktop, Cursor, VS Code, Windsurf,
-          Cline, Roo Code, Codex, Gemini, any stdio MCP client — CRUD access
-          to Apple Notes on macOS. Live, local, no index, no cloud. macOS
-          Automation permission is the only grant the server ever needs.
+          Give your agent new superpowers with a single command. Every plugin
+          ships tools that work across Claude Code, Cursor, VS Code, Windsurf,
+          and more — starting with CRUD access to Apple Notes on macOS. Live,
+          local, no index, no cloud.
         </p>
         <ul class="hero-badges" aria-label="Highlights">
+          <li>Growing collection</li>
           <li>100% local</li>
-          <li>macOS · Notes.app</li>
-          <li>11 tools</li>
+          <li>One-command install</li>
         </ul>
+        <p class="install-caption">First plugin — <a href="#plugins-h">apple-notes</a>:</p>
         <div class="install-tabs" role="tablist" aria-label="Install instructions">
           <button type="button" class="tab-btn is-active" data-install-tab="claude" role="tab" aria-selected="true">Claude Code</button>
           <button type="button" class="tab-btn" data-install-tab="other" role="tab" aria-selected="false">Other agents</button>
@@ -67,6 +68,11 @@
       <main>
         <section aria-labelledby="plugins-h">
           <h2 id="plugins-h">Plugins</h2>
+          <p class="section-intro">
+            One plugin today, more on the way. Each plugin is versioned and
+            installs with a single command.
+          </p>
+          <div class="plugin-grid">
           <article class="card">
             <div class="card-head">
               <h3>apple-notes</h3>
@@ -92,6 +98,18 @@
               <li>health_check</li>
             </ul>
           </article>
+          <article class="card card-ghost" aria-label="More plugins coming soon">
+            <div class="card-head">
+              <h3>more soon</h3>
+              <span class="version">wanted</span>
+            </div>
+            <p>
+              This marketplace is built to hold many plugins — apple-notes is
+              just the first. Have an idea for the next one?
+              <a href="https://github.com/bibutikoley/claude-marketplace">Propose it on GitHub</a>.
+            </p>
+          </article>
+          </div>
         </section>
 
         <section aria-labelledby="agents-h">
