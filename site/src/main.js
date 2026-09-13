@@ -5,11 +5,20 @@ import * as THREE from 'three';
 // and a slow wireframe icosahedron for depth. No network calls, no assets.
 
 const canvas = document.getElementById('scene');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+let renderer = null;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+} catch {
+  // No WebGL (old browser, disabled GPU): drop the backdrop, keep the page.
+  canvas.remove();
+}
+if (!renderer) {
+  // Nothing further to animate; UI wiring below is renderer-independent.
+} else {
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x0b0e14, 0.055);
+scene.fog = new THREE.FogExp2(0x0b0e14, 0.07);
 
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
 camera.position.set(0, 0.4, 9);
@@ -42,7 +51,8 @@ function makeNoteTexture(seed) {
   return tex;
 }
 
-const CARD_COUNT = 14;
+// Fewer cards on small screens: cheaper to render, less visual clutter.
+const CARD_COUNT = window.innerWidth < 640 ? 8 : 14;
 const cards = [];
 const cardGeo = new THREE.PlaneGeometry(1.5, 2.0);
 for (let i = 0; i < CARD_COUNT; i++) {
@@ -50,11 +60,13 @@ for (let i = 0; i < CARD_COUNT; i++) {
     map: makeNoteTexture(i + 1),
     side: THREE.DoubleSide,
     transparent: true,
-    opacity: 0.92,
+    // Dimmed on purpose: backdrop art, not content. The .scrim overlay and
+    // the wider orbit below keep the reading column clear.
+    opacity: 0.55,
   });
   const mesh = new THREE.Mesh(cardGeo, mat);
   const angle = (i / CARD_COUNT) * Math.PI * 2;
-  const radius = 4.2 + (i % 3) * 1.1;
+  const radius = 6.0 + (i % 3) * 1.2;
   mesh.position.set(
     Math.cos(angle) * radius,
     (i % 5) * 0.9 - 1.8,
@@ -87,14 +99,14 @@ const starGeo = new THREE.BufferGeometry();
 starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
 const stars = new THREE.Points(
   starGeo,
-  new THREE.PointsMaterial({ color: 0x8ea2c8, size: 0.035, transparent: true, opacity: 0.8 }),
+  new THREE.PointsMaterial({ color: 0x8ea2c8, size: 0.035, transparent: true, opacity: 0.5 }),
 );
 scene.add(stars);
 
 // Slow backdrop gyroscope.
 const gyro = new THREE.Mesh(
   new THREE.IcosahedronGeometry(6.5, 1),
-  new THREE.MeshBasicMaterial({ color: 0x2a3a5f, wireframe: true, transparent: true, opacity: 0.35 }),
+  new THREE.MeshBasicMaterial({ color: 0x2a3a5f, wireframe: true, transparent: true, opacity: 0.2 }),
 );
 gyro.position.set(0, 0, -6);
 scene.add(gyro);
@@ -116,11 +128,21 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
+// Fade the backdrop as the reader scrolls past the hero, so the long
+// reference sections sit on a near-solid background.
+function fadeOnScroll() {
+  const f = Math.min(1, window.scrollY / (window.innerHeight * 0.85));
+  canvas.style.opacity = String(1 - f * 0.85);
+}
+window.addEventListener('scroll', fadeOnScroll, { passive: true });
+fadeOnScroll();
+
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const clock = new THREE.Clock();
 
 function tick() {
   requestAnimationFrame(tick);
+  if (document.hidden) return; // background tab: skip work, resume on focus
   const t = clock.getElapsedTime();
   if (!reduceMotion) {
     for (const card of cards) {
@@ -138,6 +160,7 @@ function tick() {
   renderer.render(scene, camera);
 }
 tick();
+} // end WebGL scene (skipped entirely when WebGL is unavailable)
 
 // Copy install commands (kept in JS so the page needs no inline handlers).
 async function copyText(text) {

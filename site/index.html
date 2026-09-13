@@ -10,8 +10,22 @@
   </head>
   <body>
     <canvas id="scene" aria-hidden="true"></canvas>
+    <div class="scrim" aria-hidden="true"></div>
 
-    <div class="content">
+    <nav class="topnav" aria-label="Page sections">
+      <div class="topnav-inner">
+        <a class="brand" href="#top">claude-marketplace</a>
+        <div class="topnav-links">
+          <a href="#plugins-h">Plugins</a>
+          <a href="#agents-h">Other agents</a>
+          <a href="#scope-h">Access scope</a>
+          <a href="#req-h">Requirements</a>
+        </div>
+        <a class="github-link" href="https://github.com/bibutikoley/claude-marketplace">GitHub</a>
+      </div>
+    </nav>
+
+    <div class="content" id="top">
       <header class="hero">
         <p class="eyebrow">Apple Notes MCP · works with any agent</p>
         <h1>claude&#8209;marketplace</h1>
@@ -21,6 +35,11 @@
           to Apple Notes on macOS. Live, local, no index, no cloud. macOS
           Automation permission is the only grant the server ever needs.
         </p>
+        <ul class="hero-badges" aria-label="Highlights">
+          <li>100% local</li>
+          <li>macOS · Notes.app</li>
+          <li>11 tools</li>
+        </ul>
         <div class="install-tabs" role="tablist" aria-label="Install instructions">
           <button type="button" class="tab-btn is-active" data-install-tab="claude" role="tab" aria-selected="true">Claude Code</button>
           <button type="button" class="tab-btn" data-install-tab="other" role="tab" aria-selected="false">Other agents</button>
@@ -31,7 +50,10 @@
   "mcpServers": {
     "apple-notes": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"]
+      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"],
+      "env": {
+        "APPLE_NOTES_MCP_ALLOWED_FOLDERS": ""
+      }
     }
   }
 }</code>
@@ -83,8 +105,9 @@
             Fastest of all: paste the prompt below to your agent and let it
             configure itself.
           </p>
-          <div class="config-block">
-            <p class="config-label">Self-install prompt — paste this to your agent as-is</p>
+          <details class="prompt-details">
+            <summary><span>Self-install prompt — paste this to your agent as-is</span><span class="details-hint">Expand to view &amp; copy</span></summary>
+            <div class="config-block">
             <pre><code id="agent-prompt">You are an AI agent running inside an MCP client (Claude Code, Claude Desktop, Cursor, VS Code with Copilot, Windsurf Cascade, Cline, Roo Code, Codex CLI, Gemini CLI, or another MCP-compatible app). Configure the "apple-notes" MCP server for YOURSELF — write it into the MCP configuration of the client you are currently running in. Make the edit yourself; do not just print instructions.
 
 Step 1 — OS check. Run `uname -s`. If the result is not `Darwin`, STOP and tell me this server needs macOS with Notes.app.
@@ -121,14 +144,18 @@ Step 5 — Validate. Re-read the file and prove it still parses: for a JSON file
 
 Step 6 — Tell me how to activate it in THIS client (fully quit and reopen Claude Desktop with Cmd-Q; restart Cursor / Windsurf / VS Code; /mcp or `claude mcp list` for Claude Code; /mcp list for Gemini; MCP panel for Cline/Roo), remind me to click OK when macOS asks to let my terminal control Notes.app, and offer to call the health_check tool to confirm it works.</code></pre>
             <button type="button" class="copy-btn" data-copy-target="agent-prompt">Copy</button>
-          </div>
+            </div>
+          </details>
           <div class="config-block">
-            <p class="config-label">Option A — no clone. Canonical config — Claude Desktop, Cursor, Windsurf, Cline, Roo, Gemini, any <code>mcpServers</code> client</p>
+            <p class="config-label">Option A — no clone. Canonical config — Claude Desktop, Cursor, Windsurf, Cline, Roo, Gemini, any <code>mcpServers</code> client (leave <code>env</code> blank for full access, or list folders to restrict)</p>
             <pre><code id="generic-config">{
   "mcpServers": {
     "apple-notes": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"]
+      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"],
+      "env": {
+        "APPLE_NOTES_MCP_ALLOWED_FOLDERS": ""
+      }
     }
   }
 }</code></pre>
