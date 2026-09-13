@@ -14,6 +14,7 @@ never inject a second command. Raw shell is opt-in only.
 
 from __future__ import annotations
 
+import atexit
 import json
 import os
 import re
@@ -28,10 +29,29 @@ from pathlib import Path
 _DEFAULT_TIMEOUT = float(os.environ.get("ANDROID_ADB_TIMEOUT_MS", "30000")) / 1000.0
 _EMULATOR_START_TIMEOUT = 300.0
 _MAX_OUTPUT = 100 * 1024  # truncate device output (logcat/dumpsys) at 100KB
-_SCREENSHOT_MIN_INTERVAL = 10.0  # rate-limit captures: 1 per 10s
+_SCREENSHOT_MIN_INTERVAL = float(
+    os.environ.get("ANDROID_ADB_SCREENSHOT_INTERVAL", "2.0")
+)  # rate-limit captures (default 2s)
 
 _lock = threading.Lock()
 _last_capture = 0.0
+_last_temp_dir: str | None = None
+_last_screenshot_path: str | None = None
+
+
+def _cleanup_at_exit() -> None:
+    global _last_temp_dir
+    if _last_temp_dir:
+        shutil.rmtree(_last_temp_dir, ignore_errors=True)
+        _last_temp_dir = None
+
+
+atexit.register(_cleanup_at_exit)
+
+
+def last_screenshot_path() -> str | None:
+    """Path to the most recently captured screenshot."""
+    return _last_screenshot_path
 
 _DEFAULT_ALLOWED_COMMANDS = (
     "ls,cat,echo,pwd,pm,am,dumpsys,getprop,input,screencap,screenrecord,"
@@ -47,8 +67,11 @@ _VALID_KEYCODE = re.compile(r"^[A-Za-z0-9_]+$")
 _FORBIDDEN_TEXT_CHARS = set("$()`;|&<>'\"\\\n\r\t")
 
 
-class AdbError(Exception):
-    """Raised for any failure talking to the device, with a human message."""
+class AndroidError(Exception):
+    """Raised for any failure talking to the Android device, with a human message."""
+
+
+AdbError = AndroidError  # Alias for backward compatibility
 
 
 # ---- binary / SDK discovery -----------------------------------------------
@@ -61,9 +84,14 @@ def sdk_root() -> str | None:
         val = os.environ.get(var)
         if val and Path(val).is_dir():
             return val
-    home_sdk = Path.home() / "Library" / "Android" / "sdk"
-    if home_sdk.is_dir():
-        return str(home_sdk)
+    candidates = [
+        Path.home() / "Library" / "Android" / "sdk",  # macOS
+        Path.home() / "Android" / "Sdk",  # Linux
+        Path.home() / "AppData" / "Local" / "Android" / "Sdk",  # Windows
+    ]
+    for c in candidates:
+        if c.is_dir():
+            return str(c)
     return None
 
 
@@ -188,15 +216,15 @@ def list_devices() -> list[dict]:
 
 
 def resolve_serial(serial: str | None = None) -> str | None:
-    """Serial to target, or None when exactly one device is online (omit -s)."""
+    """Serial to target, or the single online device serial when exactly one is online."""
     if serial:
         return serial
     env = os.environ.get("ADB_SERIAL")
     if env:
         return env
-    online = [s for s, state in _parse_devices_short() for _ in [0] if state == "device"]
+    online = [s for s, state in _parse_devices_short() if state == "device"]
     if len(online) == 1:
-        return None  # unambiguous: talk to the only device
+        return online[0]  # unambiguous: target the only online device
     if not online:
         raise AdbError(
             "No device attached: connect a phone with USB debugging enabled, "
@@ -327,15 +355,18 @@ def take_screenshot(
     """Capture the screen. Fallback-only: call only when get_layout fails or
     the question is genuinely visual. ALWAYS writes to an explicit path —
     the CLI defaults to ./screenshot.png (repo pollution) when --output is
-    omitted. Rate-limited to 1 capture per 10s."""
-    global _last_capture
+    omitted. Rate-limited to prevent excessive captures."""
+    global _last_capture, _last_temp_dir, _last_screenshot_path
     now = time.monotonic()
     wait = _SCREENSHOT_MIN_INTERVAL - (now - _last_capture)
     if wait > 0:
-        raise AdbError(
-            f"Screenshot rate-limited: retry in {wait:.0f}s. "
-            "Prefer get_layout for re-observation."
-        )
+        if wait <= 2.0:
+            time.sleep(wait)
+        else:
+            raise AdbError(
+                f"Screenshot rate-limited: retry in {wait:.0f}s. "
+                "Prefer get_layout for re-observation."
+            )
     target = resolve_serial(serial)
     if save_to:
         dest = Path(save_to)
@@ -345,6 +376,7 @@ def take_screenshot(
             dest = dest.with_suffix(".png")
         dest.parent.mkdir(parents=True, exist_ok=True)
         tmp = False
+        tmpdir = None
     else:
         tmpdir = tempfile.mkdtemp(prefix="mobile-mcp-")
         dest = Path(tmpdir) / "screenshot.png"
@@ -354,30 +386,57 @@ def take_screenshot(
         argv.append("--annotate")
     if target:
         argv.append(f"--device={target}")
-    _run_android(argv, timeout=max(_DEFAULT_TIMEOUT, 60.0))
-    _last_capture = time.monotonic()
-    data = dest.read_bytes()
-    w, h = png_dimensions(data)
+
+    try:
+        _run_android(argv, timeout=max(_DEFAULT_TIMEOUT, 60.0))
+        _last_capture = time.monotonic()
+        data = dest.read_bytes()
+        w, h = png_dimensions(data)
+    except Exception:
+        if tmp and tmpdir:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+        raise
+
+    if tmp and tmpdir:
+        if _last_temp_dir and _last_temp_dir != tmpdir:
+            shutil.rmtree(_last_temp_dir, ignore_errors=True)
+        _last_temp_dir = tmpdir
+
+    _last_screenshot_path = str(dest)
     return {"data": data, "path": str(dest), "width": w, "height": h, "tmp": tmp}
 
 
 def cleanup_screenshot(path: str, tmp: bool) -> None:
     if tmp:
         try:
-            Path(path).unlink(missing_ok=True)
-            Path(path).parent.rmdir()
+            p = Path(path)
+            p.unlink(missing_ok=True)
+            if p.parent.name.startswith("mobile-mcp-"):
+                shutil.rmtree(p.parent, ignore_errors=True)
         except OSError:
             pass
 
 
-def tap_element(screenshot_path: str, template: str) -> str:
+def tap_element(
+    screenshot_path: str | None = None, template: str = "input tap #1"
+) -> tuple[str, tuple[int, int] | None]:
     """Substitute #N labels from an annotated screenshot into a command
-    template, e.g. template="input tap #3"."""
-    if not Path(screenshot_path).is_file():
-        raise AdbError(f"Screenshot not found: {screenshot_path}")
-    return _run_android(
-        ["screen", "resolve", f"--screenshot={screenshot_path}", f"--string={template}"]
+    template, e.g. template="input tap #3". Defaults to the last captured
+    annotated screenshot if screenshot_path is omitted."""
+    path = screenshot_path or _last_screenshot_path
+    if not path or not Path(path).is_file():
+        raise AdbError(
+            f"Screenshot not found: {path or '(none)'}. "
+            "Take an annotated screenshot with screenshot(annotate=True) first."
+        )
+    resolved = _run_android(
+        ["screen", "resolve", f"--screenshot={path}", f"--string={template}"]
     ).strip()
+    coords = None
+    m = re.search(r"\b(\d+)\s+(\d+)\b", resolved)
+    if m:
+        coords = (int(m.group(1)), int(m.group(2)))
+    return resolved, coords
 
 
 # ---- input -------------------------------------------------------------------
@@ -398,11 +457,11 @@ def swipe(
 
 
 def key_event(code: str, serial: str | None = None) -> str:
-    """Send a keyevent: BACK, HOME, ENTER, SLEEP, WAKEUP, APP_SWITCH, …"""
+    """Send a keyevent: BACK, HOME, ENTER, SLEEP, WAKEUP, APP_SWITCH, or keycode number..."""
     code = code.strip()
     if not _VALID_KEYCODE.match(code):
         raise AdbError(f"Invalid key code '{code}'. Use alphanumeric/underscore only.")
-    if not code.startswith("KEYCODE_"):
+    if not code.isdigit() and not code.startswith("KEYCODE_"):
         code = "KEYCODE_" + code.upper()
     return run_device_shell(["input", "keyevent", code], serial)
 
@@ -457,13 +516,15 @@ def launch_app(
     if activity:
         if not re.fullmatch(r"[A-Za-z0-9_./]+", activity):
             raise AdbError(f"Invalid activity '{activity}'.")
-        # am wants pkg/.Activity, pkg/pkg.Activity, or a fully-qualified name.
-        if activity.startswith("."):
-            name = package + activity
-        elif "/" in activity or activity.startswith(package):
+        # am start -n requires package/activity or package/.Activity
+        if "/" in activity:
             name = activity
-        else:
+        elif activity.startswith("."):
             name = f"{package}/{activity}"
+        elif activity.startswith(package + "."):
+            name = f"{package}/{activity}"
+        else:
+            name = f"{package}/.{activity}"
         return run_device_shell(["am", "start", "-W", "-n", name], serial)
     out = run_device_shell(
         ["monkey", "-p", package, "-c", "android.intent.category.LAUNCHER", "1"],
@@ -509,23 +570,28 @@ def install_apk(
     """Delta-install APK(s) via `android install` (faster than adb install).
     host_path must live under ANDROID_ADB_ALLOWED_INSTALL_DIRS (default /tmp/)
     — symlink escapes are rejected. Comma-separated paths allowed."""
-    first = host_path.split(",")[0].strip()
-    p = Path(first).expanduser()
-    if p.is_symlink():
-        raise AdbError(f"Refusing symlinked APK path: {first}")
-    resolved = p.resolve()
+    raw_paths = [p.strip() for p in host_path.split(",") if p.strip()]
+    if not raw_paths:
+        raise AdbError("No APK paths provided.")
     allowed = _allowed_install_dirs()
-    if not resolved.is_file() or resolved.suffix.lower() != ".apk":
-        raise AdbError(f"APK not found (must end .apk): {first}")
-    if not any(
-        resolved == d or (d.is_dir() and resolved.is_relative_to(d)) for d in allowed
-    ):
-        names = ", ".join(str(d) for d in allowed)
-        raise AdbError(
-            f"APK outside allowed install dirs ({names}). "
-            "Set ANDROID_ADB_ALLOWED_INSTALL_DIRS to include it."
-        )
-    argv = ["install", f"--apks={host_path}"]
+    valid_paths: list[str] = []
+    for raw in raw_paths:
+        p = Path(raw).expanduser()
+        if p.is_symlink():
+            raise AdbError(f"Refusing symlinked APK path: {raw}")
+        resolved = p.resolve()
+        if not resolved.is_file() or resolved.suffix.lower() != ".apk":
+            raise AdbError(f"APK not found (must end .apk): {raw}")
+        if not any(
+            resolved == d or (d.is_dir() and resolved.is_relative_to(d)) for d in allowed
+        ):
+            names = ", ".join(str(d) for d in allowed)
+            raise AdbError(
+                f"APK outside allowed install dirs ({names}): {raw}. "
+                "Set ANDROID_ADB_ALLOWED_INSTALL_DIRS to include it."
+            )
+        valid_paths.append(str(resolved))
+    argv = ["install", f"--apks={','.join(valid_paths)}"]
     target = resolve_serial(serial)
     if target:
         argv.append(f"--device={target}")
@@ -542,7 +608,7 @@ def install_apk(
 def pull_file(device_path: str, host_dest: str, serial: str | None = None) -> str:
     _require_abs_device_path(device_path)
     dest = Path(host_dest).expanduser()
-    if dest.suffix == "" or host_dest.endswith("/"):
+    if host_dest.endswith(("/", os.sep)) or dest.is_dir():
         dest.mkdir(parents=True, exist_ok=True)
     else:
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -563,14 +629,17 @@ def list_files(device_path: str, serial: str | None = None) -> str:
 
 
 def delete_file(device_path: str, serial: str | None = None) -> str:
-    """Delete a file on device. Refuses protected roots. Destructive —
-    confirm with the user first."""
+    """Delete a file on device. Refuses protected roots and system subpaths.
+    Destructive — confirm with the user first."""
     norm = os.path.normpath(device_path)
-    if norm in _PROTECTED_DELETE_ROOTS or not norm.startswith("/"):
-        raise AdbError(
-            f"Refusing to delete protected path '{device_path}'. "
-            "Delete a specific file under /sdcard or the app sandbox."
-        )
+    if not norm.startswith("/"):
+        raise AdbError(f"Device path must be absolute: '{device_path}'.")
+    for root in _PROTECTED_DELETE_ROOTS:
+        if norm == root or norm.startswith(root.rstrip("/") + "/"):
+            raise AdbError(
+                f"Refusing to delete protected path '{device_path}'. "
+                "Delete a specific file under /sdcard or the app sandbox."
+            )
     return run_device_shell(["rm", norm], serial) or "deleted"
 
 
@@ -616,9 +685,8 @@ def logcat(
     if clear:
         _run_adb(["logcat", "-c"], serial)
         return "logcat buffer cleared"
-    out = _run_adb(["logcat", "-d"], serial)
-    tail = out.splitlines()[-max(1, lines):]
-    return "\n".join(tail)
+    out = _run_adb(["logcat", "-d", "-t", str(max(1, lines))], serial)
+    return out.strip()
 
 
 def get_prop(name: str | None = None, serial: str | None = None) -> str:
@@ -649,7 +717,7 @@ def device_info(serial: str | None = None) -> dict:
     except AdbError:
         size = "unknown"
     return {
-        "serial": target or "(single device)",
+        "serial": target or "(unknown)",
         "manufacturer": want["ro.product.manufacturer"],
         "model": want["ro.product.model"],
         "android": want["ro.build.version.release"],
@@ -700,3 +768,50 @@ def run_shell(
             f"({', '.join(allowed)})."
         )
     return run_device_shell([command] + list(args or []), serial)
+
+
+# ---- high-value automation helpers -----------------------------------------------
+
+
+def current_app(serial: str | None = None) -> dict:
+    """Detect the currently focused app (package, activity, component)."""
+    out = ""
+    try:
+        out = run_device_shell(["dumpsys", "window", "windows"], serial)
+    except AdbError:
+        pass
+    m = re.search(r"mCurrentFocus=Window\{[^\}]*\s([A-Za-z0-9_.]+)/([A-Za-z0-9_.]+)\}", out)
+    if not m:
+        m = re.search(r"mFocusedApp=.*?\s([A-Za-z0-9_.]+)/([A-Za-z0-9_.]+)", out)
+    if not m:
+        try:
+            act_out = run_device_shell(["dumpsys", "activity", "activities"], serial)
+            m = re.search(r"mResumedActivity:.*?\s([A-Za-z0-9_.]+)/([A-Za-z0-9_.]+)", act_out)
+            if not m:
+                m = re.search(r"topResumedActivity=.*?\s([A-Za-z0-9_.]+)/([A-Za-z0-9_.]+)", act_out)
+        except AdbError:
+            pass
+    if m:
+        pkg, act = m.group(1), m.group(2)
+        if act.startswith("."):
+            act = pkg + act
+        return {"package": pkg, "activity": act, "component": f"{pkg}/{act}"}
+    return {"package": None, "activity": None, "component": None}
+
+
+def open_url(url: str, serial: str | None = None) -> str:
+    """Open a URL or deep link in the default handler (e.g. browser)."""
+    url = url.strip()
+    if not url or any(c in _FORBIDDEN_TEXT_CHARS for c in url):
+        raise AdbError(f"Invalid URL or disallowed characters: '{url}'.")
+    return run_device_shell(
+        ["am", "start", "-a", "android.intent.action.VIEW", "-d", url],
+        serial,
+    ).strip()
+
+
+def wake_screen(serial: str | None = None) -> str:
+    """Wake screen and dismiss keyguard if locked."""
+    run_device_shell(["input", "keyevent", "KEYCODE_WAKEUP"], serial)
+    run_device_shell(["input", "keyevent", "82"], serial)
+    return "screen awake and keyguard dismissed"

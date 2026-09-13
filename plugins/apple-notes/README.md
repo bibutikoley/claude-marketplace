@@ -39,7 +39,7 @@ client that supports stdio MCP servers.
 
 ```bash
 /plugin marketplace add bibutikoley/claude-marketplace
-/plugin install apple-notes@apple-notes-mcp
+/plugin install apple-notes-mcp@claude-marketplace
 ```
 
 Or standalone, without the marketplace (no clone needed):

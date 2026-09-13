@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Plugin marketplace for AI coding agents. Install superpowers with one command — starting with Apple Notes CRUD on macOS, via MCP for Claude Code, Cursor, VS Code, Windsurf, Cline, Roo, Codex, Gemini, opencode." />
+    <meta name="description" content="Plugin marketplace for AI coding agents. Install superpowers with one command — featuring mobile-mcp (cross-platform Android & iOS device automation) and apple-notes (Apple Notes CRUD on macOS) via MCP." />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <title>claude-marketplace — Plugin marketplace for AI agents</title>
     <link rel="stylesheet" href="/src/style.css" />
@@ -18,7 +18,7 @@
         <div class="topnav-links">
           <a href="#plugins-h">Plugins</a>
           <a href="#agents-h">Other agents</a>
-          <a href="#scope-h">Access scope</a>
+          <a href="#scope-h">Security &amp; Scope</a>
           <a href="#req-h">Requirements</a>
         </div>
         <a class="github-link" href="https://github.com/bibutikoley/claude-marketplace">GitHub</a>
@@ -31,24 +31,31 @@
         <h1>claude&#8209;marketplace</h1>
         <p class="lede">
           Give your agent new superpowers with a single command. Every plugin
-          ships tools that work across Claude Code, Cursor, VS Code, Windsurf,
-          and more — starting with CRUD access to Apple Notes on macOS. Live,
-          local, no index, no cloud.
+          ships production-grade tools that work across Claude Code, Cursor, VS Code,
+          Windsurf, and more — featuring <strong>mobile-mcp</strong> for unified Android &amp;
+          iOS device automation and <strong>apple-notes</strong> for local macOS Notes CRUD.
+          100% local, on-device, zero cloud daemons.
         </p>
         <ul class="hero-badges" aria-label="Highlights">
-          <li>Growing collection</li>
-          <li>100% local</li>
-          <li>One-command install</li>
+          <li>2 Flagship Plugins</li>
+          <li>Android &amp; iOS Automation</li>
+          <li>Apple Notes CRUD</li>
+          <li>100% Local &amp; On-Device</li>
+          <li>One-Command Install</li>
         </ul>
-        <p class="install-caption">First plugin — <a href="#plugins-h">apple-notes</a>:</p>
+        <p class="install-caption">Install via Claude Code:</p>
         <div class="install-tabs" role="tablist" aria-label="Install instructions">
           <button type="button" class="tab-btn is-active" data-install-tab="claude" role="tab" aria-selected="true">Claude Code</button>
           <button type="button" class="tab-btn" data-install-tab="other" role="tab" aria-selected="false">Other agents</button>
         </div>
         <div class="install">
-          <code id="install-cmd">/plugin marketplace add bibutikoley/claude-marketplace&#10;/plugin install apple-notes@apple-notes-mcp</code>
+          <code id="install-cmd">/plugin marketplace add bibutikoley/claude-marketplace&#10;/plugin install mobile-mcp@claude-marketplace&#10;/plugin install apple-notes-mcp@claude-marketplace</code>
           <code id="install-cmd-other" hidden>{
   "mcpServers": {
+    "mobile-mcp": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
+    },
     "apple-notes": {
       "command": "uvx",
       "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"],
@@ -60,23 +67,58 @@
 }</code>
           <button id="copy-btn" type="button">Copy</button>
         </div>
-        <p class="install-hint" id="install-hint-claude">Native plugin — restart Claude Code (or <code>/mcp</code> to reload) after installing.</p>
-        <p class="install-hint" id="install-hint-other" hidden>No clone needed — <code>uvx</code> fetches and caches the server on first run. Full per-client guide below.</p>
-        <p class="notice"><strong>Default access: all Notes.</strong> The server can read, write, and delete everything in Notes.app unless you scope it with <code>APPLE_NOTES_MCP_ALLOWED_FOLDERS</code>. <a href="#scope-h">How to restrict it</a>.</p>
+        <p class="install-hint" id="install-hint-claude">Native plugins — restart Claude Code (or <code>/mcp</code> to reload) after installing.</p>
+        <p class="install-hint" id="install-hint-other" hidden>No clone needed — <code>uvx</code> fetches and caches the servers on first run. Full per-client guide below.</p>
+        <p class="notice"><strong>Local &amp; Secure.</strong> All tools run 100% locally on your machine using first-party APIs (Apple JXA, Android ADB, and Apple Xcode simctl/devicectl).</p>
       </header>
 
       <main>
         <section aria-labelledby="plugins-h">
           <h2 id="plugins-h">Plugins</h2>
           <p class="section-intro">
-            One plugin today, more on the way. Each plugin is versioned and
-            installs with a single command.
+            Two production-ready plugins today, more on the way. Each plugin is versioned,
+            isolated, and installs with a single command.
           </p>
           <div class="plugin-grid">
           <article class="card">
             <div class="card-head">
+              <h3>mobile-mcp</h3>
+              <span class="version">v0.1.0</span>
+              <span class="platform-tag">Android &amp; iOS</span>
+            </div>
+            <p>
+              Unified cross-platform mobile device automation for AI agents. Control both
+              <strong>Android</strong> (ADB + <code>android</code> CLI) and <strong>iOS</strong>
+              (Xcode <code>simctl</code> + <code>devicectl</code> + Apple Vision OCR) using 100%
+              first-party tooling. Zero third-party daemons.
+            </p>
+            <ul class="tools" aria-label="Tools">
+              <li>health_check</li>
+              <li>list_all_devices</li>
+              <li>ios_get_layout</li>
+              <li>ios_tap_element</li>
+              <li>ios_screenshot</li>
+              <li>ios_tap</li>
+              <li>ios_swipe</li>
+              <li>ios_boot_simulator</li>
+              <li>ios_open_url</li>
+              <li>get_layout</li>
+              <li>tap_element</li>
+              <li>screenshot</li>
+              <li>tap</li>
+              <li>swipe</li>
+              <li>launch_app</li>
+              <li>press_back</li>
+              <li>open_url</li>
+              <li>+64 more</li>
+            </ul>
+            <p class="card-link"><a href="https://github.com/bibutikoley/claude-marketplace/tree/main/plugins/mobile-mcp" target="_blank" rel="noopener noreferrer">View mobile-mcp docs &amp; tools guide &rarr;</a></p>
+          </article>
+          <article class="card">
+            <div class="card-head">
               <h3>apple-notes</h3>
               <span class="version">v0.1.0</span>
+              <span class="platform-tag">macOS</span>
             </div>
             <p>
               MCP server giving any agent CRUD access to Apple Notes —
@@ -97,6 +139,7 @@
               <li>delete_folder</li>
               <li>health_check</li>
             </ul>
+            <p class="card-link"><a href="https://github.com/bibutikoley/claude-marketplace/tree/main/plugins/apple-notes" target="_blank" rel="noopener noreferrer">View apple-notes docs &amp; guide &rarr;</a></p>
           </article>
           <article class="card card-ghost" aria-label="More plugins coming soon">
             <div class="card-head">
@@ -104,8 +147,7 @@
               <span class="version">wanted</span>
             </div>
             <p>
-              This marketplace is built to hold many plugins — apple-notes is
-              just the first. Have an idea for the next one?
+              This marketplace is built to hold many plugins. Have an idea for the next one?
               <a href="https://github.com/bibutikoley/claude-marketplace">Propose it on GitHub</a>.
             </p>
           </article>
@@ -115,10 +157,10 @@
         <section aria-labelledby="agents-h">
           <h2 id="agents-h">Other agents</h2>
           <p>
-            The server is plain stdio MCP — no marketplace needed. Install
+            Every plugin is standard stdio MCP — no Claude-specific runtime or marketplace required. Install
             <code>uv</code> (provides <code>uvx</code>) and pick an option:
             <strong>A.</strong> no clone — <code>uvx</code> fetches and builds
-            the server on first start (~30s, then cached), or
+            the servers on first start (~30s, then cached), or
             <strong>B.</strong> a local clone you point at directly.
             Fastest of all: paste the prompt below to your agent and let it
             configure itself.
@@ -126,51 +168,56 @@
           <details class="prompt-details">
             <summary><span>Self-install prompt — paste this to your agent as-is</span><span class="details-hint">Expand to view &amp; copy</span></summary>
             <div class="config-block">
-            <pre><code id="agent-prompt">You are an AI agent running inside an MCP client (Claude Code, Claude Desktop, Cursor, VS Code with Copilot, Windsurf Cascade, Cline, Roo Code, Codex CLI, Gemini CLI, opencode, or another MCP-compatible app). Configure the "apple-notes" MCP server for YOURSELF — write it into the MCP configuration of the client you are currently running in. Make the edit yourself; do not just print instructions.
+            <pre><code id="agent-prompt">You are an AI agent running inside an MCP client (Claude Code, Claude Desktop, Cursor, VS Code with Copilot, Windsurf Cascade, Cline, Roo Code, Codex CLI, Gemini CLI, opencode, or another MCP-compatible app). Configure the "mobile-mcp" and "apple-notes" MCP servers for YOURSELF — write them into the MCP configuration of the client you are currently running in. Make the edit yourself; do not just print instructions.
 
-Step 1 — OS check. Run `uname -s`. If the result is not `Darwin`, STOP and tell me this server needs macOS with Notes.app.
+Step 1 — Prerequisite check. Run `uvx --version`. If uvx is missing, STOP and tell me to install uv first from https://github.com/astral-sh/uv, then re-run this prompt once it is available.
+- For mobile-mcp: verify `adb` (Android) and/or `xcrun` (iOS) are installed.
+- For apple-notes: verify `uname -s` is `Darwin` (macOS with Notes.app).
 
-Step 2 — Prerequisite check. Run `uvx --version`. If uvx is missing, STOP and tell me to install uv first from https://github.com/astral-sh/uv, then re-run this prompt once it is available.
-
-Step 3 — Detect your client and pick ONE config target (default to global/user scope unless I ask for project scope):
-- Claude Code CLI: just run `claude mcp add apple-notes -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes" apple-notes-mcp`, then skip to Step 6.
+Step 2 — Detect your client and pick ONE config target (default to global/user scope unless I ask for project scope):
+- Claude Code CLI: run:
+  claude mcp add mobile-mcp -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/mobile-mcp" mobile-mcp
+  claude mcp add apple-notes -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes" apple-notes-mcp
+  then skip to Step 5.
 - Claude Desktop: file ~/Library/Application Support/Claude/claude_desktop_config.json, JSON shape {"mcpServers": {...}}.
 - Cursor: file ~/.cursor/mcp.json (global) or .cursor/mcp.json in the current project, JSON shape {"mcpServers": {...}}.
 - VS Code (Copilot/Agent): file .vscode/mcp.json in the current project. NOTE: this file uses a "servers" key, NOT "mcpServers".
 - Windsurf: file ~/.codeium/windsurf/mcp_config.json, JSON shape {"mcpServers": {...}}.
 - Cline: the extension's MCP settings file (cline_mcp_settings.json), JSON shape {"mcpServers": {...}}.
 - Roo Code: global MCP settings (mcp_settings.json) or project .roo/mcp.json, JSON shape {"mcpServers": {...}}.
-- Codex CLI: file ~/.codex/config.toml, TOML table [mcp_servers.apple-notes] (key mcp_servers with underscore).
+- Codex CLI: file ~/.codex/config.toml, TOML tables [mcp_servers.mobile-mcp] and [mcp_servers.apple-notes] (key mcp_servers with underscore).
 - Gemini CLI: file ~/.gemini/settings.json (global) or .gemini/settings.json (project), JSON shape {"mcpServers": {...}}.
 - opencode: file opencode.json — project ./opencode.json (or .opencode/opencode.json) or global ~/.config/opencode/opencode.json, JSON shape {"mcp": {...}} with type "local". NOTE: opencode does NOT use "mcpServers", "servers", "command"+"args", or "env" — it uses "mcp", "command" as one array, and "environment".
 - Anything else: ASK me which file your client reads for MCP servers before writing anything. If you cannot determine your client, ASK me instead of guessing.
 
-Step 4 — Back up, then merge. If the file exists, back it up with a .bak suffix first. Add ONLY the "apple-notes" entry and preserve every existing entry. Create parent folders if needed. Minimal new-file skeletons: {"mcpServers": {}} for mcpServers clients, {"servers": {}} for VS Code, {"mcp": {}} for opencode (plus "$schema": "https://opencode.ai/config.json"), and for Codex just the table below in an empty file.
+Step 3 — Back up, then merge. If the file exists, back it up with a .bak suffix first. Add the "mobile-mcp" and "apple-notes" entries and preserve every existing entry. Create parent folders if needed. Minimal new-file skeletons: {"mcpServers": {}} for mcpServers clients, {"servers": {}} for VS Code, {"mcp": {}} for opencode (plus "$schema": "https://opencode.ai/config.json"), and for Codex just the tables below in an empty file.
 
 Entry values (default, no clone needed):
-- command: uvx
-- args: ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"]
-- Codex TOML form:
-  [mcp_servers.apple-notes]
-  command = "uvx"
-  args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"]
-- opencode form (merge under top-level "mcp"):
-  {"mcp": {"apple-notes": {"type": "local", "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"]}}}
+- mobile-mcp:
+  command: uvx
+  args: ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
+- apple-notes:
+  command: uvx
+  args: ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"]
 
-If I say I have a local clone of bibutikoley/claude-marketplace, use it instead: replace the --from value with the absolute path to its plugins/apple-notes directory (absolute path only, never relative).
+If I say I have a local clone of bibutikoley/claude-marketplace, use it instead: replace the --from value with the absolute path to its plugins/mobile-mcp or plugins/apple-notes directory (absolute path only, never relative).
 
-If I give you a folder allowlist, add env {"APPLE_NOTES_MCP_ALLOWED_FOLDERS": "the comma-separated list I gave you"} to the entry — except opencode, where the key is "environment" (not "env").
+For apple-notes, if I give you a folder allowlist, add env {"APPLE_NOTES_MCP_ALLOWED_FOLDERS": "the comma-separated list I gave you"} to the entry — except opencode, where the key is "environment" (not "env").
 
-Step 5 — Validate. Re-read the file and prove it still parses: for a JSON file run python3 -m json.tool with the file as its argument; for a TOML file run python3 -c "import tomllib,sys; tomllib.load(open(sys.argv[1],'rb'))" with the file path as its argument. Show me the entry you added.
+Step 4 — Validate. Re-read the file and prove it still parses: for a JSON file run python3 -m json.tool with the file as its argument; for a TOML file run python3 -c "import tomllib,sys; tomllib.load(open(sys.argv[1],'rb'))" with the file path as its argument. Show me the entries you added.
 
-Step 6 — Tell me how to activate it in THIS client (fully quit and reopen Claude Desktop with Cmd-Q; restart Cursor / Windsurf / VS Code; /mcp or `claude mcp list` for Claude Code; /mcp list for Gemini; quit and restart opencode; MCP panel for Cline/Roo), remind me to click OK when macOS asks to let my terminal control Notes.app, and offer to call the health_check tool to confirm it works.</code></pre>
+Step 5 — Tell me how to activate in THIS client (fully quit and reopen Claude Desktop with Cmd-Q; restart Cursor / Windsurf / VS Code; /mcp or `claude mcp list` for Claude Code; /mcp list for Gemini; quit and restart opencode; MCP panel for Cline/Roo), remind me to click OK on any macOS Automation prompts, and offer to call the health_check tool to confirm everything works.</code></pre>
             <button type="button" class="copy-btn" data-copy-target="agent-prompt">Copy</button>
             </div>
           </details>
           <div class="config-block">
-            <p class="config-label">Option A — no clone. Canonical config — Claude Desktop, Cursor, Windsurf, Cline, Roo, Gemini, any <code>mcpServers</code> client (leave <code>env</code> blank for full access, or list folders to restrict)</p>
+            <p class="config-label">Option A — no clone. Canonical config — Claude Desktop, Cursor, Windsurf, Cline, Roo, Gemini, any <code>mcpServers</code> client</p>
             <pre><code id="generic-config">{
   "mcpServers": {
+    "mobile-mcp": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
+    },
     "apple-notes": {
       "command": "uvx",
       "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"],
@@ -202,6 +249,10 @@ Step 6 — Tell me how to activate it in THIS client (fully quit and reopen Clau
             <p class="config-label">VS Code (Copilot) — <code>.vscode/mcp.json</code> uses a <code>servers</code> key</p>
             <pre><code id="vscode-config">{
   "servers": {
+    "mobile-mcp": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
+    },
     "apple-notes": {
       "command": "uvx",
       "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"]
@@ -212,7 +263,11 @@ Step 6 — Tell me how to activate it in THIS client (fully quit and reopen Clau
           </div>
           <div class="config-block">
             <p class="config-label">Codex CLI — <code>~/.codex/config.toml</code> (TOML, note <code>mcp_servers</code>)</p>
-            <pre><code id="codex-config">[mcp_servers.apple-notes]
+            <pre><code id="codex-config">[mcp_servers.mobile-mcp]
+command = "uvx"
+args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
+
+[mcp_servers.apple-notes]
 command = "uvx"
 args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"]</code></pre>
             <button type="button" class="copy-btn" data-copy-target="codex-config">Copy</button>
@@ -221,6 +276,10 @@ args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdire
             <p class="config-label">opencode — <code>opencode.json</code> uses an <code>mcp</code> key, <code>command</code> as one array, and <code>environment</code></p>
             <pre><code id="opencode-config">{
   "mcp": {
+    "mobile-mcp": {
+      "type": "local",
+      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
+    },
     "apple-notes": {
       "type": "local",
       "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"],
@@ -238,9 +297,13 @@ args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdire
             <button type="button" class="copy-btn" data-copy-target="clone-cmd">Copy</button>
           </div>
           <div class="config-block">
-            <p class="config-label">Option B config — same <code>mcpServers</code> shape, <code>--from</code> points at your checkout (absolute path, e.g. <code>/Users/you/claude-marketplace/plugins/apple-notes</code>; same swap for the VS Code, Codex, and opencode shapes above)</p>
+            <p class="config-label">Option B config — same <code>mcpServers</code> shape, <code>--from</code> points at your checkout (absolute path, e.g. <code>/Users/you/claude-marketplace/plugins/mobile-mcp</code>; same swap for the VS Code, Codex, and opencode shapes above)</p>
             <pre><code id="clone-config">{
   "mcpServers": {
+    "mobile-mcp": {
+      "command": "uvx",
+      "args": ["--from", "/ABSOLUTE/PATH/plugins/mobile-mcp", "mobile-mcp"]
+    },
     "apple-notes": {
       "command": "uvx",
       "args": ["--from", "/ABSOLUTE/PATH/plugins/apple-notes", "apple-notes-mcp"]
@@ -250,9 +313,8 @@ args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdire
             <button type="button" class="copy-btn" data-copy-target="clone-config">Copy</button>
           </div>
           <p class="muted">
-            First tool call in any client: click <strong>OK</strong> on the
-            macOS Automation prompt, then verify with the
-            <code>health_check</code> tool. Optional folder allowlist via
+            First tool call in any client: click <strong>OK</strong> on any macOS Automation prompts,
+            then verify with the <code>health_check</code> tool. Optional folder allowlist for Notes via
             <code>APPLE_NOTES_MCP_ALLOWED_FOLDERS</code> in the entry's
             <code>env</code> (<code>environment</code> for opencode) — see the
             <a href="https://github.com/bibutikoley/claude-marketplace/blob/main/plugins/apple-notes/README.md">plugin README</a>.
@@ -260,22 +322,32 @@ args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdire
         </section>
 
         <section aria-labelledby="scope-h">
-          <h2 id="scope-h">Access scope</h2>
+          <h2 id="scope-h">Security &amp; Scope</h2>
           <p>
-            By default the server can access <strong>all</strong> your notes.
-            Restrict every tool to a folder allowlist with
-            <code>APPLE_NOTES_MCP_ALLOWED_FOLDERS</code> (comma-separated
-            names or full paths). Unset means unrestricted. Confirm the
-            active scope any time with <code>health_check</code>.
+            All plugins run <strong>100% locally on your machine</strong> using first-party OS and developer tooling. There are zero background cloud daemons, zero telemetry, and zero remote proxies.
           </p>
-          <pre><code>APPLE_NOTES_MCP_ALLOWED_FOLDERS="iCloud/Work,iCloud/Personal" claude</code></pre>
+          <div class="config-block">
+            <p class="config-label"><strong>apple-notes:</strong> Access Scope</p>
+            <p>
+              By default the server can access all Notes. Restrict tools to a folder allowlist via <code>APPLE_NOTES_MCP_ALLOWED_FOLDERS</code> (comma-separated folder names or full paths). Unset means unrestricted. Confirm active scope with <code>health_check</code>:
+            </p>
+            <pre><code>APPLE_NOTES_MCP_ALLOWED_FOLDERS="iCloud/Work,iCloud/Personal" claude</code></pre>
+          </div>
+          <div class="config-block">
+            <p class="config-label"><strong>mobile-mcp:</strong> Device Isolation &amp; On-Device Vision OCR</p>
+            <p>
+              Controls connected physical Android devices/emulators via ADB and iOS Simulators/devices via Xcode (<code>simctl</code> and <code>devicectl</code>). UI element detection on iOS uses Apple's native <strong>Vision OCR</strong> framework running locally on macOS — zero UI screenshots are uploaded to third-party cloud LLMs for coordinate detection.
+            </p>
+          </div>
         </section>
 
         <section aria-labelledby="req-h">
           <h2 id="req-h">Requirements</h2>
           <ul>
-            <li>macOS with Notes.app</li>
-            <li><code>uv</code> installed (Python ≥ 3.12)</li>
+            <li><strong>General:</strong> <code>uv</code> installed (Python &ge; 3.12)</li>
+            <li><strong>apple-notes:</strong> macOS with Notes.app and Automation permission</li>
+            <li><strong>mobile-mcp (Android):</strong> Android SDK platform-tools (<code>adb</code>) in <code>PATH</code>, USB debugging enabled or Android Emulator</li>
+            <li><strong>mobile-mcp (iOS):</strong> macOS with Xcode 15+ (<code>xcrun simctl</code> for Simulators, <code>xcrun devicectl</code> for physical iOS 17+ devices)</li>
           </ul>
         </section>
       </main>

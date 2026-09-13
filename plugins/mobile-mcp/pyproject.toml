@@ -1,7 +1,7 @@
 [project]
 name = "mobile-mcp"
 version = "0.1.0"
-description = "MCP server for Android phone control via ADB + android CLI (developers, Android Studio SDK)"
+description = "Unified MCP server for Android (ADB) and iOS (Xcode simctl/devicectl) device control"
 requires-python = ">=3.12"
 dependencies = [
     "mcp>=1.0",
@@ -15,4 +15,4 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["main", "adb"]
+py-modules = ["main", "android", "ios"]

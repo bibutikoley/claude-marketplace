@@ -1,5 +1,5 @@
 {
-  "name": "apple-notes",
+  "name": "apple-notes-mcp",
   "displayName": "Apple Notes MCP",
   "description": "MCP server giving Claude Code CRUD access to Apple Notes",
   "version": "0.1.0",

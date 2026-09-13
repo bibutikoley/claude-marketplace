@@ -10,17 +10,20 @@ truth, queried live on every call, all locally. Works with Claude Code
 natively, and with any other MCP client (Claude Desktop, Cursor, VS Code,
 Windsurf, Cline, Roo Code, Codex CLI, Gemini CLI, opencode — see
 [`plugins/apple-notes/README.md`](plugins/apple-notes/README.md#other-agents)) —
-and **mobile-mcp**, an MCP server for Android phone control via ADB + the
-`android` CLI (requires Android Studio + SDK; see
+and **mobile-mcp**, a unified MCP server for cross-platform mobile device
+control covering both Android (ADB + `android` CLI) and iOS (Xcode `simctl` +
+`devicectl` + native Quartz UI automation; see
 [`plugins/mobile-mcp/README.md`](plugins/mobile-mcp/README.md)).
 
 ## Prerequisites
 
-- macOS with Notes.app
-- [uv](https://github.com/astral-sh/uv) installed (Python ≥ 3.12)
+- **General:** [uv](https://github.com/astral-sh/uv) installed (Python ≥ 3.12)
+- **apple-notes:** macOS with Notes.app and Automation permissions
+- **mobile-mcp (Android):** Android SDK command-line / platform-tools (`adb`) in `PATH`, USB debugging enabled or Android Emulator
+- **mobile-mcp (iOS):** macOS with Xcode 15+ (`xcrun simctl` for Simulators, `xcrun devicectl` for physical iOS 17+ devices)
 
 > [!NOTE]
-> By default the server has access to **all** your Apple Notes.
+> By default `apple-notes` has access to **all** your Apple Notes.
 > Set `APPLE_NOTES_MCP_ALLOWED_FOLDERS` (comma-separated folder names or full
 > paths) in the server's environment to restrict it to specific folders — see
 > [`plugins/apple-notes/README.md`](plugins/apple-notes/README.md#access-scope).
@@ -29,33 +32,41 @@ and **mobile-mcp**, an MCP server for Android phone control via ADB + the
 
 ### Claude Code
 
-Add the marketplace, then install the plugin:
+Add the marketplace, then install the plugins:
 
 ```bash
 /plugin marketplace add bibutikoley/claude-marketplace
-/plugin install apple-notes@apple-notes-mcp
-/plugin install mobile-mcp@apple-notes-mcp
+/plugin install mobile-mcp@claude-marketplace
+/plugin install apple-notes-mcp@claude-marketplace
 ```
 
-On the first tool call, click **OK** on the macOS Automation prompt
-("‹your terminal› would like to control Notes"). That one grant is all the
+On the first tool call, click **OK** on any macOS Automation prompts
+(e.g., "‹your terminal› would like to control Notes"). That grant is all the
 access the server needs.
 
 Standalone alternative (without the marketplace, no clone needed):
 
 ```bash
+# mobile-mcp
+claude mcp add mobile-mcp -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/mobile-mcp" mobile-mcp
+
+# apple-notes
 claude mcp add apple-notes -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes" apple-notes-mcp
 ```
 
 ### Other agents
 
-Any MCP client can run the server over stdio — no marketplace needed. Just `uv` installed (provides `uvx`).
+Any MCP client can run the servers over stdio — no marketplace needed. Just `uv` installed (provides `uvx`).
 
 Option A — no clone (recommended):
 
 ```json
 {
   "mcpServers": {
+    "mobile-mcp": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
+    },
     "apple-notes": {
       "command": "uvx",
       "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"]
@@ -65,10 +76,10 @@ Option A — no clone (recommended):
 ```
 
 Option B — local clone: `git clone https://github.com/bibutikoley/claude-marketplace.git`,
-then use `"--from", "<ABSOLUTE-PATH>/plugins/apple-notes"` as the `args` value above
+then use `"--from", "<ABSOLUTE-PATH>/plugins/mobile-mcp"` or `plugins/apple-notes` as the `args` value above
 (absolute path required).
 
-Easiest of all: paste the [self-install prompt](plugins/apple-notes/README.md#let-your-agent-configure-itself)
+Easiest of all: paste the self-install prompt from the [live site](https://bibutikoley.github.io/claude-marketplace/)
 to your agent and let it configure itself.
 
 opencode (`opencode.json` — project `./opencode.json` or global
@@ -77,6 +88,10 @@ opencode (`opencode.json` — project `./opencode.json` or global
 ```json
 {
   "mcp": {
+    "mobile-mcp": {
+      "type": "local",
+      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
+    },
     "apple-notes": {
       "type": "local",
       "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"],
@@ -90,8 +105,8 @@ opencode (`opencode.json` — project `./opencode.json` or global
 
 Full per-client guide (config file paths for Claude Desktop, Cursor, VS Code,
 Windsurf, Cline, Roo Code, Codex CLI, Gemini CLI, opencode, plus the VS Code `servers`,
-Codex TOML, and opencode `mcp` variants): see
-[`plugins/apple-notes/README.md`](plugins/apple-notes/README.md#other-agents).
+Codex TOML, and opencode `mcp` variants): see the [live site](https://bibutikoley.github.io/claude-marketplace/)
+or [`plugins/apple-notes/README.md`](plugins/apple-notes/README.md#other-agents).
 
 ## Contents
 
@@ -100,7 +115,7 @@ Codex TOML, and opencode `mcp` variants): see
 | `.claude-plugin/marketplace.json` | Marketplace catalog |
 | `plugins/apple-notes/` | The plugin (MCP server + `.mcp.json` + manifest) |
 | `plugins/apple-notes/README.md` | Tool reference and behavior notes |
-| `plugins/mobile-mcp/` | The plugin (Android control via ADB + `android` CLI) |
+| `plugins/mobile-mcp/` | The plugin (Unified Android + iOS mobile device automation) |
 | `plugins/mobile-mcp/README.md` | Tool reference, agent loop, and security model |
 | `site/` | Landing page (Vite + Three.js, deployed to GitHub Pages — see [site/README.md](site/README.md)) |
 
