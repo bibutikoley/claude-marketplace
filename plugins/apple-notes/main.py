@@ -73,50 +73,64 @@ def list_notes(folder: str | None = None, limit: int = 50, modified_since: str |
 
 
 @mcp.tool()
-def get_note(note_id: str) -> dict:
+def get_note(note_id: str, format: str = "markdown") -> dict:
     """Get a note by its CoreData id (from list-notes / search-notes): title,
-    HTML body, plaintext, folder, created/modified dates."""
+    HTML body, plaintext, folder, created/modified dates. With
+    format="markdown" (default) also returns a Markdown rendering of the body;
+    use format="plaintext" for HTML+plaintext only."""
     try:
-        n = notes.get_note(note_id)
-        return _ok(
-            f"# {n['name']}\n\n{n['plaintext']}",
+        n = notes.get_note(note_id, format=format)
+        extra = dict(
             id=n["id"], name=n["name"], html=n["body"], plaintext=n["plaintext"],
             folder=n["folder"], created=n["created"], modified=n["modified"],
         )
+        if "markdown" in n:
+            extra["markdown"] = n["markdown"]
+            text = f"# {n['name']}\n\n{n['markdown']}"
+        else:
+            text = f"# {n['name']}\n\n{n['plaintext']}"
+        return _ok(text, **extra)
     except notes.NotesError as e:
         return _ok(f"ERROR: {e}")
 
 
 @mcp.tool()
-def create_note(title: str, content: str, folder: str | None = None) -> dict:
-    """Create a note. `title` becomes the note title; `content` is plaintext body
-    (newlines become line breaks). Optionally `folder`: exact folder path (e.g.
-    \"iCloud/Work\") — must already exist (see create_folder)."""
+def create_note(
+    title: str, content: str, folder: str | None = None, format: str = "markdown"
+) -> dict:
+    """Create a note. `title` becomes the note title; `content` is Markdown by
+    default (format="markdown") or plaintext (format="plaintext", newlines
+    become line breaks). Optionally `folder`: exact folder path (e.g.
+    "iCloud/Work") — must already exist (see create_folder)."""
     try:
-        result = notes.create_note(title, notes.plaintext_to_html(content), folder)
+        result = notes.create_note(title, content, folder, format=format)
         return _ok(f"Created note '{result['name']}' [id: {result['id']}]", **result)
     except notes.NotesError as e:
         return _ok(f"ERROR: {e}")
 
 
 @mcp.tool()
-def update_note(note_id: str, content: str) -> dict:
-    """Replace a note's entire body. `content` is plaintext; its first line
-    becomes the new title (Notes.app behavior). Use get_note first to see the
-    current body — this call overwrites it."""
+def update_note(note_id: str, content: str, format: str = "markdown") -> dict:
+    """Replace a note's entire body. `content` is Markdown by default
+    (format="markdown"); its first heading/line becomes the new title
+    (Notes.app behavior). Use format="plaintext" for plain text. Use get_note
+    first to see the current body — this call overwrites it."""
     try:
-        result = notes.update_note(note_id, notes.plaintext_to_html(content))
+        result = notes.update_note(note_id, content, format=format)
         return _ok(f"Updated note '{result['name']}' [id: {result['id']}]", **result)
     except notes.NotesError as e:
         return _ok(f"ERROR: {e}")
 
 
 @mcp.tool()
-def append_note(note_id: str, content: str, position: str = "after") -> dict:
-    """Append (position=\"after\", default) or prepend (position=\"before\")
-    plaintext content to a note without replacing what is already there."""
+def append_note(
+    note_id: str, content: str, position: str = "after", format: str = "markdown"
+) -> dict:
+    """Append (position="after", default) or prepend (position="before")
+    content to a note without replacing what is already there. `content` is
+    Markdown by default, plaintext with format="plaintext"."""
     try:
-        result = notes.append_note(note_id, notes.plaintext_to_html(content), position)
+        result = notes.append_note(note_id, content, position, format=format)
         return _ok(f"Appended to note '{result['name']}' [id: {result['id']}]", **result)
     except notes.NotesError as e:
         return _ok(f"ERROR: {e}")

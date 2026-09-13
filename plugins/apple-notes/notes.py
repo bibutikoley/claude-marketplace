@@ -13,6 +13,9 @@ import os
 import subprocess
 import threading
 
+DEFAULT_FORMAT = "markdown"
+VALID_FORMATS = ("plaintext", "markdown")
+
 _DEFAULT_TIMEOUT = float(os.environ.get("APPLE_NOTES_MCP_TIMEOUT_MS", "30000")) / 1000.0
 _lock = threading.Lock()
 
@@ -248,9 +251,15 @@ def list_folders() -> list[str]:
     return paths
 
 
-def create_note(title: str, body_html: str, folder: str | None) -> dict:
+def create_note(
+    title: str, content: str, folder: str | None, format: str = DEFAULT_FORMAT
+) -> dict:
     """Create a note. The title lives in the body as an <h1>, which is how
-    Notes.app derives the note title — matching native editing behavior."""
+    Notes.app derives the note title — matching native editing behavior.
+
+    `content` is Markdown by default (`format="markdown"`) or plaintext
+    (`format="plaintext"`); it is converted to the HTML Notes.app stores.
+    """
     if scoped() and folder is None:
         raise NotesError(
             "Access scope is restricted: name an explicit folder for the new note "
@@ -258,27 +267,40 @@ def create_note(title: str, body_html: str, folder: str | None) -> dict:
         )
     if folder is not None:
         require_folder_in_scope(folder.split("/")[-1])
+    body_html = content_to_html(content, format)
     html = f"<h1>{_escape(title)}</h1>"
     if body_html:
         html += "<div><br></div>" + body_html
     return json.loads(_run_jxa(_make_note_js(title, html, folder)))
 
 
-def get_note(note_id: str) -> dict:
+def get_note(note_id: str, format: str = DEFAULT_FORMAT) -> dict:
     n = json.loads(_run_jxa(_GET_NOTE_JS.replace("__ID__", _js(note_id))))
     require_folder_in_scope(n["folder"])
+    if validate_format(format) == "markdown":
+        n["markdown"] = html_to_markdown(n.get("body", ""))
     return n
 
 
-def update_note(note_id: str, body_html: str) -> dict:
-    """Replace a note's entire body. First line of the new body becomes its title."""
+def update_note(note_id: str, content: str, format: str = DEFAULT_FORMAT) -> dict:
+    """Replace a note's entire body. First line / first <h1> becomes its title.
+
+    `content` is Markdown by default, plaintext with `format="plaintext"`.
+    """
     _require_note_in_scope(note_id)
+    body_html = content_to_html(content, format)
     return json.loads(_run_jxa(_set_body_js(note_id, body_html)))
 
 
-def append_note(note_id: str, body_html: str, position: str = "after") -> dict:
+def append_note(
+    note_id: str,
+    content: str,
+    position: str = "after",
+    format: str = DEFAULT_FORMAT,
+) -> dict:
     _require_note_in_scope(note_id)
-    current = get_note(note_id)
+    body_html = content_to_html(content, format)
+    current = get_note(note_id, format="plaintext")
     sep = "<div><br></div>"
     new_body = (
         current["body"] + sep + body_html
@@ -396,6 +418,15 @@ def _escape(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
+def validate_format(format: str) -> str:
+    fmt = (format or "").lower()
+    if fmt not in VALID_FORMATS:
+        raise NotesError(
+            f"Unknown format '{format}'. Use one of: {', '.join(VALID_FORMATS)}."
+        )
+    return fmt
+
+
 def plaintext_to_html(text: str) -> str:
     """Convert plaintext to the loose HTML Notes.app accepts."""
     if not text:
@@ -407,3 +438,35 @@ def plaintext_to_html(text: str) -> str:
         else:
             lines.append(_escape(line))
     return "<br>".join(lines)
+
+
+def markdown_to_html(text: str) -> str:
+    """Convert Markdown to HTML for Notes.app (CommonMark via `markdown` lib)."""
+    if not text:
+        return ""
+    import markdown
+
+    return markdown.markdown(text, extensions=["extra", "sane_lists"])
+
+
+def html_to_markdown(html: str) -> str:
+    """Convert Notes.app HTML body back to Markdown (via `markdownify`)."""
+    if not html:
+        return ""
+    from markdownify import markdownify
+
+    return markdownify(html, heading_style="ATX").strip()
+
+
+def content_to_html(content: str, format: str = DEFAULT_FORMAT) -> str:
+    """Convert user content to Notes HTML based on `format`.
+
+    `format` is "markdown" (default) or "plaintext". Markdown is rendered
+    with the `markdown` package; plaintext is escaped with <br> line breaks.
+    """
+    fmt = validate_format(format)
+    if not content:
+        return ""
+    if fmt == "markdown":
+        return markdown_to_html(content)
+    return plaintext_to_html(content)

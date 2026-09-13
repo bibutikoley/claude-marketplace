@@ -22,10 +22,10 @@ client that supports stdio MCP servers.
 | Tool | Purpose |
 |------|---------|
 | `list_notes` | Notes by id/title/folder/modified; filter by folder or date, limit |
-| `get_note` | Full note: HTML body, plaintext, folder, created/modified, id |
-| `create_note` | Create with title + plaintext body, optionally in a folder path |
-| `update_note` | Replace entire body; first line becomes the new title (Notes semantics) |
-| `append_note` | Append/prepend without replacing existing content |
+| `get_note` | Full note: HTML body, plaintext, Markdown (default), folder, created/modified, id |
+| `create_note` | Create with title + Markdown (default) or plaintext body, optionally in a folder path |
+| `update_note` | Replace entire body (Markdown by default); first heading/line becomes the new title (Notes semantics) |
+| `append_note` | Append/prepend Markdown (default) or plaintext without replacing existing content |
 | `delete_note` | Delete (moves to **Recently Deleted** — note stays resolvable there) |
 | `search_notes` | Case-insensitive substring search on titles, or bodies (`search_content`) |
 | `list_folders` | All folders as `Account/Folder/Subfolder` paths |
@@ -248,9 +248,16 @@ tool. macOS + Notes.app only; no Node required.
 
 ## Behavior notes
 
+- **Format** (`format="markdown"` default, or `"plaintext"`): `create_note`,
+  `update_note`, `append_note` accept Markdown by default (rendered to HTML
+  with the `markdown` package: `extra` + `sane_lists`) or plaintext
+  (`format="plaintext"`). `get_note` returns `html` + `plaintext` plus
+  `markdown` (via `markdownify`, ATX headings) when `format="markdown"`.
+  Notes.app itself only stores HTML — Markdown is converted on write and
+  re-derived on read, so round-trips are lossy for exotic constructs.
 - **Titles** live in the body as the first line — exactly like editing in
   Notes.app. `create_note` writes `<h1>title</h1>`; `update_note` derives the
-  new title from `content`'s first line.
+  new title from `content`'s first heading/line.
 - **Folders** are addressed by the full paths `list_folders` returns
   (`iCloud/Work`); a bare name resolves under the default account.
 - **Delete is soft**: notes land in Recently Deleted, remain listable/gettable,
@@ -259,8 +266,9 @@ tool. macOS + Notes.app only; no Node required.
   (`Notes.notes.name()`, `Notes.notes.id()`); folders resolve per note, so
   folder-filtered lists are slower than unfiltered ones. Raise
   `APPLE_NOTES_MCP_TIMEOUT_MS` (default 30000) for very large libraries.
-- Plaintext converts newlines to `<br>`; `&`, `<`, `>` are HTML-escaped.
-  Body writes are HTML under the hood, matching how Notes stores them.
+- Plaintext (`format="plaintext"`) converts newlines to `<br>`; `&`, `<`, `>`
+  are HTML-escaped. Body writes are HTML under the hood, matching how Notes
+  stores them.
 
 ## Access scope
 
