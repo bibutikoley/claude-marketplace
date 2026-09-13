@@ -1,6 +1,6 @@
 # claude-marketplace
 
-[![Home Page](https://img.shields.io/badge/Home_Page-0b0e14?style=for-the-badge)](https://bibutikoley.github.io/claude-marketplace/)
+**[Live demo →](https://bibutikoley.github.io/claude-marketplace/)**
 
 Claude Code plugin marketplace. Currently ships one plugin: **apple-notes** —
 an MCP server giving CRUD access to Apple Notes on macOS
@@ -89,3 +89,5 @@ plugin's `plugin.json`). Users receive updates when the version is bumped.
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+Built by [Bibuti Koley](https://bibutikoley.github.io).
