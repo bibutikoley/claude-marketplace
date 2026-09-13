@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mobile-mcp": {
+      "command": "uvx",
+      "args": ["--from", "${CLAUDE_PLUGIN_ROOT}", "mobile-mcp"]
+    }
+  }
+}

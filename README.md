@@ -2,14 +2,17 @@
 
 **[Live demo →](https://bibutikoley.github.io/claude-marketplace/)**
 
-Claude Code plugin marketplace. Currently ships one plugin: **apple-notes** —
+Claude Code plugin marketplace. Currently ships two plugins: **apple-notes** —
 an MCP server giving CRUD access to Apple Notes on macOS
 (Python + `uv` + the official `mcp` SDK, driving Notes.app through JXA).
 No RAG, no vector index, no Full Disk Access: Notes.app is the source of
 truth, queried live on every call, all locally. Works with Claude Code
 natively, and with any other MCP client (Claude Desktop, Cursor, VS Code,
 Windsurf, Cline, Roo Code, Codex CLI, Gemini CLI, opencode — see
-[`plugins/apple-notes/README.md`](plugins/apple-notes/README.md#other-agents)).
+[`plugins/apple-notes/README.md`](plugins/apple-notes/README.md#other-agents)) —
+and **mobile-mcp**, an MCP server for Android phone control via ADB + the
+`android` CLI (requires Android Studio + SDK; see
+[`plugins/mobile-mcp/README.md`](plugins/mobile-mcp/README.md)).
 
 ## Prerequisites
 
@@ -31,6 +34,7 @@ Add the marketplace, then install the plugin:
 ```bash
 /plugin marketplace add bibutikoley/claude-marketplace
 /plugin install apple-notes@apple-notes-mcp
+/plugin install mobile-mcp@apple-notes-mcp
 ```
 
 On the first tool call, click **OK** on the macOS Automation prompt
@@ -96,6 +100,8 @@ Codex TOML, and opencode `mcp` variants): see
 | `.claude-plugin/marketplace.json` | Marketplace catalog |
 | `plugins/apple-notes/` | The plugin (MCP server + `.mcp.json` + manifest) |
 | `plugins/apple-notes/README.md` | Tool reference and behavior notes |
+| `plugins/mobile-mcp/` | The plugin (Android control via ADB + `android` CLI) |
+| `plugins/mobile-mcp/README.md` | Tool reference, agent loop, and security model |
 | `site/` | Landing page (Vite + Three.js, deployed to GitHub Pages — see [site/README.md](site/README.md)) |
 
 ## Versioning
