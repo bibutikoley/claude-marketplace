@@ -49,6 +49,8 @@ def allowed_leaves() -> set[str]:
 
 
 def require_folder_in_scope(leaf_name: str) -> None:
+    if not scoped():
+        return
     if leaf_name not in allowed_leaves():
         names = ", ".join(sorted(ALLOWED_FOLDERS)) or "(none)"
         raise NotesError(
