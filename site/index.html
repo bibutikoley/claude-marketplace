@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Plugin marketplace for AI coding agents. Install superpowers with one command — starting with Apple Notes CRUD on macOS, via MCP for Claude Code, Cursor, VS Code, Windsurf, Cline, Roo, Codex, Gemini." />
+    <meta name="description" content="Plugin marketplace for AI coding agents. Install superpowers with one command — starting with Apple Notes CRUD on macOS, via MCP for Claude Code, Cursor, VS Code, Windsurf, Cline, Roo, Codex, Gemini, opencode." />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <title>claude-marketplace — Plugin marketplace for AI agents</title>
     <link rel="stylesheet" href="/src/style.css" />
@@ -126,7 +126,7 @@
           <details class="prompt-details">
             <summary><span>Self-install prompt — paste this to your agent as-is</span><span class="details-hint">Expand to view &amp; copy</span></summary>
             <div class="config-block">
-            <pre><code id="agent-prompt">You are an AI agent running inside an MCP client (Claude Code, Claude Desktop, Cursor, VS Code with Copilot, Windsurf Cascade, Cline, Roo Code, Codex CLI, Gemini CLI, or another MCP-compatible app). Configure the "apple-notes" MCP server for YOURSELF — write it into the MCP configuration of the client you are currently running in. Make the edit yourself; do not just print instructions.
+            <pre><code id="agent-prompt">You are an AI agent running inside an MCP client (Claude Code, Claude Desktop, Cursor, VS Code with Copilot, Windsurf Cascade, Cline, Roo Code, Codex CLI, Gemini CLI, opencode, or another MCP-compatible app). Configure the "apple-notes" MCP server for YOURSELF — write it into the MCP configuration of the client you are currently running in. Make the edit yourself; do not just print instructions.
 
 Step 1 — OS check. Run `uname -s`. If the result is not `Darwin`, STOP and tell me this server needs macOS with Notes.app.
 
@@ -142,9 +142,10 @@ Step 3 — Detect your client and pick ONE config target (default to global/user
 - Roo Code: global MCP settings (mcp_settings.json) or project .roo/mcp.json, JSON shape {"mcpServers": {...}}.
 - Codex CLI: file ~/.codex/config.toml, TOML table [mcp_servers.apple-notes] (key mcp_servers with underscore).
 - Gemini CLI: file ~/.gemini/settings.json (global) or .gemini/settings.json (project), JSON shape {"mcpServers": {...}}.
+- opencode: file opencode.json — project ./opencode.json (or .opencode/opencode.json) or global ~/.config/opencode/opencode.json, JSON shape {"mcp": {...}} with type "local". NOTE: opencode does NOT use "mcpServers", "servers", "command"+"args", or "env" — it uses "mcp", "command" as one array, and "environment".
 - Anything else: ASK me which file your client reads for MCP servers before writing anything. If you cannot determine your client, ASK me instead of guessing.
 
-Step 4 — Back up, then merge. If the file exists, back it up with a .bak suffix first. Add ONLY the "apple-notes" entry and preserve every existing entry. Create parent folders if needed. Minimal new-file skeletons: {"mcpServers": {}} for mcpServers clients, {"servers": {}} for VS Code, and for Codex just the table below in an empty file.
+Step 4 — Back up, then merge. If the file exists, back it up with a .bak suffix first. Add ONLY the "apple-notes" entry and preserve every existing entry. Create parent folders if needed. Minimal new-file skeletons: {"mcpServers": {}} for mcpServers clients, {"servers": {}} for VS Code, {"mcp": {}} for opencode (plus "$schema": "https://opencode.ai/config.json"), and for Codex just the table below in an empty file.
 
 Entry values (default, no clone needed):
 - command: uvx
@@ -153,14 +154,16 @@ Entry values (default, no clone needed):
   [mcp_servers.apple-notes]
   command = "uvx"
   args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"]
+- opencode form (merge under top-level "mcp"):
+  {"mcp": {"apple-notes": {"type": "local", "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"]}}}
 
 If I say I have a local clone of bibutikoley/claude-marketplace, use it instead: replace the --from value with the absolute path to its plugins/apple-notes directory (absolute path only, never relative).
 
-If I give you a folder allowlist, add env {"APPLE_NOTES_MCP_ALLOWED_FOLDERS": "the comma-separated list I gave you"} to the entry.
+If I give you a folder allowlist, add env {"APPLE_NOTES_MCP_ALLOWED_FOLDERS": "the comma-separated list I gave you"} to the entry — except opencode, where the key is "environment" (not "env").
 
 Step 5 — Validate. Re-read the file and prove it still parses: for a JSON file run python3 -m json.tool with the file as its argument; for a TOML file run python3 -c "import tomllib,sys; tomllib.load(open(sys.argv[1],'rb'))" with the file path as its argument. Show me the entry you added.
 
-Step 6 — Tell me how to activate it in THIS client (fully quit and reopen Claude Desktop with Cmd-Q; restart Cursor / Windsurf / VS Code; /mcp or `claude mcp list` for Claude Code; /mcp list for Gemini; MCP panel for Cline/Roo), remind me to click OK when macOS asks to let my terminal control Notes.app, and offer to call the health_check tool to confirm it works.</code></pre>
+Step 6 — Tell me how to activate it in THIS client (fully quit and reopen Claude Desktop with Cmd-Q; restart Cursor / Windsurf / VS Code; /mcp or `claude mcp list` for Claude Code; /mcp list for Gemini; quit and restart opencode; MCP panel for Cline/Roo), remind me to click OK when macOS asks to let my terminal control Notes.app, and offer to call the health_check tool to confirm it works.</code></pre>
             <button type="button" class="copy-btn" data-copy-target="agent-prompt">Copy</button>
             </div>
           </details>
@@ -191,6 +194,7 @@ Step 6 — Tell me how to activate it in THIS client (fully quit and reopen Clau
                 <tr><td>Cline</td><td>Cline panel → MCP Servers → Configure MCP Servers (<code>cline_mcp_settings.json</code>)</td></tr>
                 <tr><td>Roo Code</td><td>Edit Global MCP (<code>mcp_settings.json</code>) or project <code>.roo/mcp.json</code></td></tr>
                 <tr><td>Gemini CLI</td><td><code>~/.gemini/settings.json</code> (global) or <code>.gemini/settings.json</code> (project)</td></tr>
+                <tr><td>opencode</td><td><code>opencode.json</code> — project <code>./opencode.json</code> or global <code>~/.config/opencode/opencode.json</code>, then quit + restart</td></tr>
               </tbody>
             </table>
           </div>
@@ -214,12 +218,27 @@ args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdire
             <button type="button" class="copy-btn" data-copy-target="codex-config">Copy</button>
           </div>
           <div class="config-block">
+            <p class="config-label">opencode — <code>opencode.json</code> uses an <code>mcp</code> key, <code>command</code> as one array, and <code>environment</code></p>
+            <pre><code id="opencode-config">{
+  "mcp": {
+    "apple-notes": {
+      "type": "local",
+      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"],
+      "environment": {
+        "APPLE_NOTES_MCP_ALLOWED_FOLDERS": ""
+      }
+    }
+  }
+}</code></pre>
+            <button type="button" class="copy-btn" data-copy-target="opencode-config">Copy</button>
+          </div>
+          <div class="config-block">
             <p class="config-label">Option B — local clone. Clone once, then use the absolute path</p>
             <pre><code id="clone-cmd">git clone https://github.com/bibutikoley/claude-marketplace.git</code></pre>
             <button type="button" class="copy-btn" data-copy-target="clone-cmd">Copy</button>
           </div>
           <div class="config-block">
-            <p class="config-label">Option B config — same <code>mcpServers</code> shape, <code>--from</code> points at your checkout (absolute path, e.g. <code>/Users/you/claude-marketplace/plugins/apple-notes</code>)</p>
+            <p class="config-label">Option B config — same <code>mcpServers</code> shape, <code>--from</code> points at your checkout (absolute path, e.g. <code>/Users/you/claude-marketplace/plugins/apple-notes</code>; same swap for the VS Code, Codex, and opencode shapes above)</p>
             <pre><code id="clone-config">{
   "mcpServers": {
     "apple-notes": {
@@ -235,7 +254,7 @@ args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdire
             macOS Automation prompt, then verify with the
             <code>health_check</code> tool. Optional folder allowlist via
             <code>APPLE_NOTES_MCP_ALLOWED_FOLDERS</code> in the entry's
-            <code>env</code> — see the
+            <code>env</code> (<code>environment</code> for opencode) — see the
             <a href="https://github.com/bibutikoley/claude-marketplace/blob/main/plugins/apple-notes/README.md">plugin README</a>.
           </p>
         </section>

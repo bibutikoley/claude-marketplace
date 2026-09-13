@@ -8,7 +8,7 @@ an MCP server giving CRUD access to Apple Notes on macOS
 No RAG, no vector index, no Full Disk Access: Notes.app is the source of
 truth, queried live on every call, all locally. Works with Claude Code
 natively, and with any other MCP client (Claude Desktop, Cursor, VS Code,
-Windsurf, Cline, Roo Code, Codex CLI, Gemini CLI — see
+Windsurf, Cline, Roo Code, Codex CLI, Gemini CLI, opencode — see
 [`plugins/apple-notes/README.md`](plugins/apple-notes/README.md#other-agents)).
 
 ## Prerequisites
@@ -67,9 +67,26 @@ then use `"--from", "<ABSOLUTE-PATH>/plugins/apple-notes"` as the `args` value a
 Easiest of all: paste the [self-install prompt](plugins/apple-notes/README.md#let-your-agent-configure-itself)
 to your agent and let it configure itself.
 
+opencode (`opencode.json` — project `./opencode.json` or global
+`~/.config/opencode/opencode.json`, quit and restart after editing):
+
+```json
+{
+  "mcp": {
+    "apple-notes": {
+      "type": "local",
+      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"],
+      "environment": {
+        "APPLE_NOTES_MCP_ALLOWED_FOLDERS": ""
+      }
+    }
+  }
+}
+```
+
 Full per-client guide (config file paths for Claude Desktop, Cursor, VS Code,
-Windsurf, Cline, Roo Code, Codex CLI, Gemini CLI, plus the VS Code `servers`
-and Codex TOML variants): see
+Windsurf, Cline, Roo Code, Codex CLI, Gemini CLI, opencode, plus the VS Code `servers`,
+Codex TOML, and opencode `mcp` variants): see
 [`plugins/apple-notes/README.md`](plugins/apple-notes/README.md#other-agents).
 
 ## Contents

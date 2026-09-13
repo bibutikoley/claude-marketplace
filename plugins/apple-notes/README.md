@@ -7,7 +7,7 @@ index, no Full Disk Access: Notes.app itself is the source of truth, queried
 live on every call, all locally.
 
 Works with any MCP client: Claude Code, Claude Desktop, Cursor, VS Code
-(Copilot), Windsurf, Cline, Roo Code, Codex CLI, Gemini CLI, and any other
+(Copilot), Windsurf, Cline, Roo Code, Codex CLI, Gemini CLI, opencode, and any other
 client that supports stdio MCP servers.
 
 > [!NOTE]
@@ -55,7 +55,7 @@ Notes"). That one grant is all the access the server needs.
 ### Other agents
 
 Claude Desktop, Cursor, VS Code, Windsurf, Cline, Roo Code, Codex CLI,
-Gemini CLI, or any other stdio MCP client.
+Gemini CLI, opencode, or any other stdio MCP client.
 
 No clone needed — point your client straight at the repo and `uvx` fetches,
 builds, and caches the server on first run (needs
@@ -71,7 +71,7 @@ running in, writes the entry into that client's own MCP config (backing it
 up first), and tells you how to activate it.
 
 ```text
-You are an AI agent running inside an MCP client (Claude Code, Claude Desktop, Cursor, VS Code with Copilot, Windsurf Cascade, Cline, Roo Code, Codex CLI, Gemini CLI, or another MCP-compatible app). Configure the "apple-notes" MCP server for YOURSELF — write it into the MCP configuration of the client you are currently running in. Make the edit yourself; do not just print instructions.
+You are an AI agent running inside an MCP client (Claude Code, Claude Desktop, Cursor, VS Code with Copilot, Windsurf Cascade, Cline, Roo Code, Codex CLI, Gemini CLI, opencode, or another MCP-compatible app). Configure the "apple-notes" MCP server for YOURSELF — write it into the MCP configuration of the client you are currently running in. Make the edit yourself; do not just print instructions.
 
 Step 1 — OS check. Run `uname -s`. If the result is not `Darwin`, STOP and tell me this server needs macOS with Notes.app.
 
@@ -87,9 +87,10 @@ Step 3 — Detect your client and pick ONE config target (default to global/user
 - Roo Code: global MCP settings (mcp_settings.json) or project .roo/mcp.json, JSON shape {"mcpServers": {...}}.
 - Codex CLI: file ~/.codex/config.toml, TOML table [mcp_servers.apple-notes] (key mcp_servers with underscore).
 - Gemini CLI: file ~/.gemini/settings.json (global) or .gemini/settings.json (project), JSON shape {"mcpServers": {...}}.
+- opencode: file opencode.json — project ./opencode.json (or .opencode/opencode.json) or global ~/.config/opencode/opencode.json, JSON shape {"mcp": {...}} with type "local". NOTE: opencode does NOT use "mcpServers", "servers", "command"+"args", or "env" — it uses "mcp", "command" as one array, and "environment".
 - Anything else: ASK me which file your client reads for MCP servers before writing anything. If you cannot determine your client, ASK me instead of guessing.
 
-Step 4 — Back up, then merge. If the file exists, back it up with a .bak suffix first. Add ONLY the "apple-notes" entry and preserve every existing entry. Create parent folders if needed. Minimal new-file skeletons: {"mcpServers": {}} for mcpServers clients, {"servers": {}} for VS Code, and for Codex just the table below in an empty file.
+Step 4 — Back up, then merge. If the file exists, back it up with a .bak suffix first. Add ONLY the "apple-notes" entry and preserve every existing entry. Create parent folders if needed. Minimal new-file skeletons: {"mcpServers": {}} for mcpServers clients, {"servers": {}} for VS Code, {"mcp": {}} for opencode (plus "$schema": "https://opencode.ai/config.json"), and for Codex just the table below in an empty file.
 
 Entry values (default, no clone needed):
 - command: uvx
@@ -98,14 +99,16 @@ Entry values (default, no clone needed):
   [mcp_servers.apple-notes]
   command = "uvx"
   args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"]
+- opencode form (merge under top-level "mcp"):
+  {"mcp": {"apple-notes": {"type": "local", "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"]}}}
 
 If I say I have a local clone of bibutikoley/claude-marketplace, use it instead: replace the --from value with the absolute path to its plugins/apple-notes directory (absolute path only, never relative).
 
-If I give you a folder allowlist, add env {"APPLE_NOTES_MCP_ALLOWED_FOLDERS": "the comma-separated list I gave you"} to the entry.
+If I give you a folder allowlist, add env {"APPLE_NOTES_MCP_ALLOWED_FOLDERS": "the comma-separated list I gave you"} to the entry — except opencode, where the key is "environment" (not "env").
 
 Step 5 — Validate. Re-read the file and prove it still parses: for a JSON file run python3 -m json.tool with the file as its argument; for a TOML file run python3 -c "import tomllib,sys; tomllib.load(open(sys.argv[1],'rb'))" with the file path as its argument. Show me the entry you added.
 
-Step 6 — Tell me how to activate it in THIS client (fully quit and reopen Claude Desktop with Cmd-Q; restart Cursor / Windsurf / VS Code; /mcp or `claude mcp list` for Claude Code; /mcp list for Gemini; MCP panel for Cline/Roo), remind me to click OK when macOS asks to let my terminal control Notes.app, and offer to call the health_check tool to confirm it works.
+Step 6 — Tell me how to activate it in THIS client (fully quit and reopen Claude Desktop with Cmd-Q; restart Cursor / Windsurf / VS Code; /mcp or `claude mcp list` for Claude Code; /mcp list for Gemini; quit and restart opencode; MCP panel for Cline/Roo), remind me to click OK when macOS asks to let my terminal control Notes.app, and offer to call the health_check tool to confirm it works.
 ```
 
 #### Option A — no clone (recommended)
@@ -149,6 +152,7 @@ With an access-scope allowlist (optional):
 | **Roo Code** | Roo pane → ⚙️ → MCP Servers → Edit Global MCP (`mcp_settings.json`) or Edit Project MCP (`.roo/mcp.json`). Same `mcpServers` shape. |
 | **Codex CLI** | `~/.codex/config.toml` uses TOML under `mcp_servers` (see snippet below). |
 | **Gemini CLI** | `~/.gemini/settings.json` (global) or `.gemini/settings.json` (project). Same `mcpServers` shape. Then `/mcp list` to verify. |
+| **opencode** | `opencode.json` — project `./opencode.json` (or `.opencode/opencode.json`) or global `~/.config/opencode/opencode.json`. Uses `mcp` + `type: local` (see snippet below). Quit and restart opencode. |
 | **Any other stdio MCP client** (Zed, Amp, Goose, …) | Paste the canonical config wherever the client reads `mcpServers`. |
 
 VS Code (`.vscode/mcp.json`) variant:
@@ -172,6 +176,39 @@ command = "uvx"
 args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"]
 ```
 
+opencode (`opencode.json`) variant — note `mcp` (not `mcpServers`),
+`command` as one array, and `environment` (not `env`):
+
+```json
+{
+  "mcp": {
+    "apple-notes": {
+      "type": "local",
+      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"],
+      "environment": {
+        "APPLE_NOTES_MCP_ALLOWED_FOLDERS": ""
+      }
+    }
+  }
+}
+```
+
+With an access-scope allowlist, set the value instead of leaving it blank:
+
+```json
+{
+  "mcp": {
+    "apple-notes": {
+      "type": "local",
+      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"],
+      "environment": {
+        "APPLE_NOTES_MCP_ALLOWED_FOLDERS": "iCloud/Work,iCloud/Personal"
+      }
+    }
+  }
+}
+```
+
 #### Option B — local clone
 
 Clone once, then use the checkout's absolute path as the `--from` value
@@ -193,8 +230,8 @@ git clone https://github.com/bibutikoley/claude-marketplace.git
 }
 ```
 
-Same swap applies to the other shapes: in the VS Code (`servers`) and Codex
-(`mcp_servers`) snippets above, replace the `git+https://…` value with
+Same swap applies to the other shapes: in the VS Code (`servers`), Codex
+(`mcp_servers`), and opencode (`mcp`) snippets above, replace the `git+https://…` value with
 `<ABSOLUTE-PATH>/plugins/apple-notes`.
 
 Notes:
