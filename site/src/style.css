@@ -106,6 +106,142 @@ h1 {
   filter: brightness(1.08);
 }
 
+.install-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.tab-btn {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.35rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tab-btn.is-active {
+  background: var(--chip);
+  color: var(--ink);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.install-hint {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin: 0.6rem 0 0;
+}
+
+.install-hint code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+}
+
+.notice {
+  margin: 1rem 0 0;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.9rem;
+  background: rgba(255, 214, 10, 0.08);
+  border: 1px solid rgba(255, 214, 10, 0.35);
+  border-left: 4px solid var(--accent);
+  border-radius: 0.6rem;
+}
+
+.notice code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+}
+
+.notice a {
+  color: var(--accent);
+}
+
+.config-block {
+  position: relative;
+  margin-top: 1.25rem;
+}
+
+.config-label {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+}
+
+.config-block pre {
+  margin: 0;
+  padding-right: 5.5rem;
+}
+
+.copy-btn {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 0;
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.copy-btn:hover {
+  filter: brightness(1.08);
+}
+
+.table-wrap {
+  overflow-x: auto;
+  margin-top: 1.25rem;
+}
+
+.agents-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.agents-table th,
+.agents-table td {
+  text-align: left;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.agents-table tbody tr:last-child th,
+.agents-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.agents-table th {
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.agents-table td:first-child {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.muted a,
+p a {
+  color: var(--ink);
+}
+
 main section {
   margin-top: 2.5rem;
 }

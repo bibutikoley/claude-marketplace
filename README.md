@@ -3,17 +3,28 @@
 **[Live demo →](https://bibutikoley.github.io/claude-marketplace/)**
 
 Claude Code plugin marketplace. Currently ships one plugin: **apple-notes** —
-an MCP server giving Claude Code CRUD access to Apple Notes on macOS
+an MCP server giving CRUD access to Apple Notes on macOS
 (Python + `uv` + the official `mcp` SDK, driving Notes.app through JXA).
 No RAG, no vector index, no Full Disk Access: Notes.app is the source of
-truth, queried live on every call, all locally.
+truth, queried live on every call, all locally. Works with Claude Code
+natively, and with any other MCP client (Claude Desktop, Cursor, VS Code,
+Windsurf, Cline, Roo Code, Codex CLI, Gemini CLI — see
+[`plugins/apple-notes/README.md`](plugins/apple-notes/README.md#other-agents)).
 
 ## Prerequisites
 
 - macOS with Notes.app
 - [uv](https://github.com/astral-sh/uv) installed (Python ≥ 3.12)
 
+> [!NOTE]
+> By default the server has access to **all** your Apple Notes.
+> Set `APPLE_NOTES_MCP_ALLOWED_FOLDERS` (comma-separated folder names or full
+> paths) in the server's environment to restrict it to specific folders — see
+> [`plugins/apple-notes/README.md`](plugins/apple-notes/README.md#access-scope).
+
 ## Install
+
+### Claude Code
 
 Add the marketplace, then install the plugin:
 
@@ -26,11 +37,40 @@ On the first tool call, click **OK** on the macOS Automation prompt
 ("‹your terminal› would like to control Notes"). That one grant is all the
 access the server needs.
 
-Standalone alternative (without the marketplace):
+Standalone alternative (without the marketplace, no clone needed):
 
 ```bash
-claude mcp add apple-notes -s user -- uvx --from <path-to>/plugins/apple-notes apple-notes-mcp
+claude mcp add apple-notes -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes" apple-notes-mcp
 ```
+
+### Other agents
+
+Any MCP client can run the server over stdio — no marketplace needed. Just `uv` installed (provides `uvx`).
+
+Option A — no clone (recommended):
+
+```json
+{
+  "mcpServers": {
+    "apple-notes": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"]
+    }
+  }
+}
+```
+
+Option B — local clone: `git clone https://github.com/bibutikoley/claude-marketplace.git`,
+then use `"--from", "<ABSOLUTE-PATH>/plugins/apple-notes"` as the `args` value above
+(absolute path required).
+
+Easiest of all: paste the [self-install prompt](plugins/apple-notes/README.md#let-your-agent-configure-itself)
+to your agent and let it configure itself.
+
+Full per-client guide (config file paths for Claude Desktop, Cursor, VS Code,
+Windsurf, Cline, Roo Code, Codex CLI, Gemini CLI, plus the VS Code `servers`
+and Codex TOML variants): see
+[`plugins/apple-notes/README.md`](plugins/apple-notes/README.md#other-agents).
 
 ## Contents
 

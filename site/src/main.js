@@ -140,19 +140,62 @@ function tick() {
 tick();
 
 // Copy install commands (kept in JS so the page needs no inline handlers).
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function flash(btn, ok) {
+  const original = btn.dataset.label || btn.textContent;
+  btn.dataset.label = original;
+  btn.textContent = ok ? 'Copied' : 'Select & copy';
+  window.setTimeout(() => {
+    btn.textContent = original;
+  }, 1600);
+}
+
+// Hero tabs: Claude Code vs Other agents.
+const tabBtns = document.querySelectorAll('[data-install-tab]');
+const claudeCmd = document.getElementById('install-cmd');
+const otherCmd = document.getElementById('install-cmd-other');
+const hintClaude = document.getElementById('install-hint-claude');
+const hintOther = document.getElementById('install-hint-other');
+
+function showTab(name) {
+  const isClaude = name !== 'other';
+  if (claudeCmd) claudeCmd.hidden = !isClaude;
+  if (otherCmd) otherCmd.hidden = isClaude;
+  if (hintClaude) hintClaude.hidden = !isClaude;
+  if (hintOther) hintOther.hidden = isClaude;
+  for (const btn of tabBtns) {
+    const active = btn.dataset.installTab === name;
+    btn.classList.toggle('is-active', active);
+    btn.setAttribute('aria-selected', active ? 'true' : 'false');
+  }
+}
+
+for (const btn of tabBtns) {
+  btn.addEventListener('click', () => showTab(btn.dataset.installTab));
+}
+
 const copyBtn = document.getElementById('copy-btn');
 if (copyBtn) {
   copyBtn.addEventListener('click', async () => {
-    const cmd = document.getElementById('install-cmd');
-    const text = cmd ? cmd.innerText : '';
-    try {
-      await navigator.clipboard.writeText(text);
-      copyBtn.textContent = 'Copied';
-    } catch {
-      copyBtn.textContent = 'Select & copy';
-    }
-    window.setTimeout(() => {
-      copyBtn.textContent = 'Copy';
-    }, 1600);
+    const visible = otherCmd && !otherCmd.hidden ? otherCmd : claudeCmd;
+    const text = visible ? visible.innerText : '';
+    flash(copyBtn, await copyText(text));
+  });
+}
+
+// Per-snippet copy buttons in the Other agents section.
+for (const btn of document.querySelectorAll('[data-copy-target]')) {
+  btn.addEventListener('click', async () => {
+    const target = document.getElementById(btn.dataset.copyTarget);
+    const text = target ? target.innerText : '';
+    flash(btn, await copyText(text));
   });
 }
