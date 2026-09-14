@@ -1,6 +1,6 @@
 [project]
 name = "apple-notes-mcp"
-version = "0.5.0"
+version = "0.5.1"
 description = "MCP server giving Claude Code CRUD access to Apple Notes via AppleScript"
 requires-python = ">=3.12"
 dependencies = [
