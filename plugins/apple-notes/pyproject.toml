@@ -1,6 +1,6 @@
 [project]
 name = "apple-notes-mcp"
-version = "0.2.0"
+version = "0.3.0"
 description = "MCP server giving Claude Code CRUD access to Apple Notes via AppleScript"
 requires-python = ">=3.12"
 dependencies = [
@@ -18,3 +18,14 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 py-modules = ["main", "notes"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.mypy]
+python_version = "3.12"
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = ["markdown", "markdownify"]
+ignore_missing_imports = true

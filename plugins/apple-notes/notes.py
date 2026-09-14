@@ -33,6 +33,7 @@ class NotesError(Exception):
 # So "iCloud/Work" does NOT grant "On My Mac/Work". Prefer full paths.
 # No config files on disk — the environment variable is the only source.
 
+
 def _load_scope() -> frozenset[str]:
     raw = os.environ.get("APPLE_NOTES_MCP_ALLOWED_FOLDERS")
     if not raw or not raw.strip():
@@ -116,8 +117,7 @@ def _require_note_in_scope(note_id: str) -> str:
         "var n = Notes.notes.byId(__ID__);\n"
         "var c = n.container();\n"
         "if (!c) { JSON.stringify(null); }\n"
-        "else {\n"
-        + _full_path_js("c") + ";\n"
+        "else {\n" + _full_path_js("c") + ";\n"
         "JSON.stringify(parts.join('/'));\n"
         "}"
     ).replace("__ID__", _js(note_id))
@@ -174,11 +174,14 @@ var Notes = Application('Notes');
 """
 
 
-def _js(s: str) -> str:
+def _js(s: str | None) -> str:
+    """Render a Python value as a JS literal (None -> null, for optional refs)."""
     return json.dumps(s, ensure_ascii=True)
 
 
-_LIST_FOLDERS = _PREAMBLE + r"""
+_LIST_FOLDERS = (
+    _PREAMBLE
+    + r"""
 function walk(folders, prefix, out) {
     for (var i = 0; i < folders.length; i++) {
         var name = folders[i].name();
@@ -194,6 +197,7 @@ for (var a = 0; a < accounts.length; a++) {
 }
 JSON.stringify(out);
 """
+)
 
 
 def _folder_ref_js(name: str | None) -> str:
@@ -239,7 +243,9 @@ def _make_note_js(title: str, body_html: str, folder: str | None) -> str:
     ).replace("__FOLDER__", _js(folder)).replace("__BODY__", _js(body_html))
 
 
-_GET_NOTE_JS = _PREAMBLE + r"""
+_GET_NOTE_JS = (
+    _PREAMBLE
+    + r"""
 var n = Notes.notes.byId(__ID__);
 var container = n.container();
 var folderLeaf = container ? container.name() : null;
@@ -268,21 +274,20 @@ JSON.stringify({
     modified: new Date(n.modificationDate()).toISOString()
 });
 """
+)
 
 
 def _set_body_js(note_id: str, body_html: str) -> str:
     return _PREAMBLE + (
         "var n = Notes.notes.byId(__ID__);\n"
         "n.body = __BODY__;\n"
-        f"JSON.stringify({{id: n.id(), name: n.name()}});"
+        "JSON.stringify({id: n.id(), name: n.name()});"
     ).replace("__ID__", _js(note_id)).replace("__BODY__", _js(body_html))
 
 
 def _delete_note_js(note_id: str) -> str:
     return _PREAMBLE + (
-        "var n = Notes.notes.byId(__ID__);\n"
-        "Notes.delete(n);\n"
-        "JSON.stringify({deleted: true});"
+        "var n = Notes.notes.byId(__ID__);\nNotes.delete(n);\nJSON.stringify({deleted: true});"
     ).replace("__ID__", _js(note_id))
 
 
@@ -310,8 +315,7 @@ def _delete_folder_js(name: str) -> str:
 
 def _health_js() -> str:
     return _PREAMBLE + (
-        "var accounts = Notes.accounts();\n"
-        "JSON.stringify({ok: true, accounts: accounts.length});"
+        "var accounts = Notes.accounts();\nJSON.stringify({ok: true, accounts: accounts.length});"
     )
 
 
@@ -325,9 +329,7 @@ def list_folders() -> list[str]:
     return paths
 
 
-def create_note(
-    title: str, content: str, folder: str | None, format: str = DEFAULT_FORMAT
-) -> dict:
+def create_note(title: str, content: str, folder: str | None, format: str = DEFAULT_FORMAT) -> dict:
     """Create a note. The title lives in the body as an <h1>, which is how
     Notes.app derives the note title — matching native editing behavior.
 
@@ -445,7 +447,7 @@ def list_notes(
     folder: str | None = None,
     limit: int = 50,
     modified_since: str | None = None,
-) -> list[dict]:
+) -> tuple[list[dict], int]:
     """List notes (id, name, folder, modified). `folder` accepts a full path
     (e.g. "iCloud/Work") or a bare leaf (e.g. "Work"); folder is the canonical
     Account/... full path. Optionally filter by ISO-8601 modified date
@@ -473,10 +475,7 @@ def list_notes(
         if "/" in folder:
             all_notes = [n for n in all_notes if n.get("folder") == folder]
         else:
-            all_notes = [
-                n for n in all_notes
-                if (n.get("folder") or "").split("/")[-1] == folder
-            ]
+            all_notes = [n for n in all_notes if (n.get("folder") or "").split("/")[-1] == folder]
     # Filter by modified_since
     if modified_since:
         all_notes = [n for n in all_notes if n["modified"] >= modified_since]
@@ -525,9 +524,7 @@ def _escape(text: str) -> str:
 def validate_format(format: str) -> str:
     fmt = (format or "").lower()
     if fmt not in VALID_FORMATS:
-        raise NotesError(
-            f"Unknown format '{format}'. Use one of: {', '.join(VALID_FORMATS)}."
-        )
+        raise NotesError(f"Unknown format '{format}'. Use one of: {', '.join(VALID_FORMATS)}.")
     return fmt
 
 

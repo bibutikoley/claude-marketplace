@@ -53,14 +53,23 @@ def last_screenshot_path() -> str | None:
     """Path to the most recently captured screenshot."""
     return _last_screenshot_path
 
+
 _DEFAULT_ALLOWED_COMMANDS = (
     "ls,cat,echo,pwd,pm,am,dumpsys,getprop,input,screencap,screenrecord,"
     "logcat,ps,wm,settings,uiautomator,cmd"
 )
 
 _PROTECTED_DELETE_ROOTS = (
-    "/", "/system", "/vendor", "/product", "/apex",
-    "/data", "/sbin", "/proc", "/sys", "/dev",
+    "/",
+    "/system",
+    "/vendor",
+    "/product",
+    "/apex",
+    "/data",
+    "/sbin",
+    "/proc",
+    "/sys",
+    "/dev",
 )
 
 _VALID_KEYCODE = re.compile(r"^[A-Za-z0-9_]+$")
@@ -232,14 +241,11 @@ def resolve_serial(serial: str | None = None) -> str | None:
         )
     serials = ", ".join(online)
     raise AdbError(
-        f"Multiple devices online ({serials}). Pass serial= explicitly "
-        "or set ADB_SERIAL."
+        f"Multiple devices online ({serials}). Pass serial= explicitly or set ADB_SERIAL."
     )
 
 
-def _run_adb(
-    argv: list[str], serial: str | None = None, timeout: float | None = None
-) -> str:
+def _run_adb(argv: list[str], serial: str | None = None, timeout: float | None = None) -> str:
     target = resolve_serial(serial)
     if target:
         argv = ["-s", target] + argv
@@ -269,11 +275,9 @@ def _run_android(argv: list[str], timeout: float | None = None) -> str:
                 timeout=timeout,
             )
         except subprocess.TimeoutExpired:
-            raise AdbError(
-                f"`android` CLI did not respond within {timeout:g}s."
-            ) from None
+            raise AdbError(f"`android` CLI did not respond within {timeout:g}s.") from None
     if proc.returncode != 0:
-        err = (proc.stderr.strip() or proc.stdout.strip())
+        err = proc.stderr.strip() or proc.stdout.strip()
         human = _classify_adb_error(err)
         if human:
             raise AdbError(human)
@@ -311,9 +315,7 @@ def health() -> dict:
 # ---- observe: layout-first ---------------------------------------------------
 
 
-def get_layout(
-    serial: str | None = None, flat: bool = False, full: bool = False
-) -> list | dict:
+def get_layout(serial: str | None = None, flat: bool = False, full: bool = False) -> list | dict:
     """UI hierarchy as parsed JSON. Primary observation channel — prefer this
     over screenshots. First call installs a layout instrumentation server on
     the device (slow once). Fails on WebView/animation screens: callers must
@@ -447,7 +449,11 @@ def tap(x: int, y: int, serial: str | None = None) -> str:
 
 
 def swipe(
-    x1: int, y1: int, x2: int, y2: int, duration_ms: int = 300,
+    x1: int,
+    y1: int,
+    x2: int,
+    y2: int,
+    duration_ms: int = 300,
     serial: str | None = None,
 ) -> str:
     return run_device_shell(
@@ -496,9 +502,7 @@ def list_packages(
     # args injection-safe.
     out = run_device_shell(argv, serial)
     pkgs = [
-        line.partition(":")[2].strip()
-        for line in out.splitlines()
-        if line.startswith("package:")
+        line.partition(":")[2].strip() for line in out.splitlines() if line.startswith("package:")
     ]
     if filter:
         q = filter.lower()
@@ -506,9 +510,7 @@ def list_packages(
     return pkgs
 
 
-def launch_app(
-    package: str, activity: str | None = None, serial: str | None = None
-) -> str:
+def launch_app(package: str, activity: str | None = None, serial: str | None = None) -> str:
     """Launch an installed app. Explicit activity → `am start -n`; otherwise
     the launcher intent via `monkey`."""
     if not re.fullmatch(r"[A-Za-z0-9_.]+", package):
@@ -531,9 +533,7 @@ def launch_app(
         serial,
     )
     if "No activities found" in out:
-        raise AdbError(
-            f"No launchable activity for '{package}'. Pass activity= explicitly."
-        )
+        raise AdbError(f"No launchable activity for '{package}'. Pass activity= explicitly.")
     return out.strip()
 
 
@@ -582,9 +582,7 @@ def install_apk(
         resolved = p.resolve()
         if not resolved.is_file() or resolved.suffix.lower() != ".apk":
             raise AdbError(f"APK not found (must end .apk): {raw}")
-        if not any(
-            resolved == d or (d.is_dir() and resolved.is_relative_to(d)) for d in allowed
-        ):
+        if not any(resolved == d or (d.is_dir() and resolved.is_relative_to(d)) for d in allowed):
             names = ", ".join(str(d) for d in allowed)
             raise AdbError(
                 f"APK outside allowed install dirs ({names}): {raw}. "
@@ -605,8 +603,12 @@ def install_apk(
 # ---- files --------------------------------------------------------------------
 
 
-def pull_file(device_path: str, host_dest: str, serial: str | None = None) -> str:
+def pull_file(device_path: str, host_dest: str | None, serial: str | None = None) -> str:
     _require_abs_device_path(device_path)
+    if host_dest is None:
+        # Mirror `adb pull <remote>` with no destination: land the file in
+        # the current directory under its device basename.
+        host_dest = Path(device_path).name
     dest = Path(host_dest).expanduser()
     if host_dest.endswith(("/", os.sep)) or dest.is_dir():
         dest.mkdir(parents=True, exist_ok=True)
@@ -679,9 +681,7 @@ def emulator_stop(device: str | None = None) -> str:
 # ---- system ---------------------------------------------------------------------
 
 
-def logcat(
-    serial: str | None = None, lines: int = 200, clear: bool = False
-) -> str:
+def logcat(serial: str | None = None, lines: int = 200, clear: bool = False) -> str:
     if clear:
         _run_adb(["logcat", "-c"], serial)
         return "logcat buffer cleared"
@@ -699,10 +699,8 @@ def get_prop(name: str | None = None, serial: str | None = None) -> str:
 
 def device_info(serial: str | None = None) -> dict:
     target = resolve_serial(serial)
-    props = run_device_shell(
-        ["getprop"], target
-    )
-    want = {
+    props = run_device_shell(["getprop"], target)
+    want: dict[str, str | None] = {
         "ro.product.manufacturer": None,
         "ro.product.model": None,
         "ro.build.version.release": None,
@@ -743,17 +741,17 @@ def reboot(mode: str | None = None, serial: str | None = None) -> str:
 
 def shell_allowed() -> tuple[bool, list[str]]:
     allowed = [
-        c.strip() for c in os.environ.get(
-            "ANDROID_ADB_ALLOWED_COMMANDS", _DEFAULT_ALLOWED_COMMANDS
-        ).split(",") if c.strip()
+        c.strip()
+        for c in os.environ.get("ANDROID_ADB_ALLOWED_COMMANDS", _DEFAULT_ALLOWED_COMMANDS).split(
+            ","
+        )
+        if c.strip()
     ]
     on = os.environ.get("ANDROID_ADB_ALLOW_SHELL", "").lower() in ("1", "true")
     return on, allowed
 
 
-def run_shell(
-    command: str, args: list[str] | None = None, serial: str | None = None
-) -> str:
+def run_shell(command: str, args: list[str] | None = None, serial: str | None = None) -> str:
     """Escape hatch. OFF unless ANDROID_ADB_ALLOW_SHELL=1, and the first token
     must be in ANDROID_ADB_ALLOWED_COMMANDS. Args are centrally quoted."""
     on, allowed = shell_allowed()
@@ -764,8 +762,7 @@ def run_shell(
         )
     if (command or "").strip() not in allowed:
         raise AdbError(
-            f"Command '{command}' not in ANDROID_ADB_ALLOWED_COMMANDS "
-            f"({', '.join(allowed)})."
+            f"Command '{command}' not in ANDROID_ADB_ALLOWED_COMMANDS ({', '.join(allowed)})."
         )
     return run_device_shell([command] + list(args or []), serial)
 

@@ -307,9 +307,7 @@ def resolve_simulator(udid_or_name: str | None = None) -> str:
             if sim["udid"].lower() == target.lower():
                 return sim["udid"]
         # 2. Exact Name (case-insensitive)
-        name_matches = [
-            sim for sim in all_sims if sim["name"].lower() == target.lower()
-        ]
+        name_matches = [sim for sim in all_sims if sim["name"].lower() == target.lower()]
         if len(name_matches) == 1:
             return name_matches[0]["udid"]
         elif len(name_matches) > 1:
@@ -318,8 +316,7 @@ def resolve_simulator(udid_or_name: str | None = None) -> str:
             if len(booted) == 1:
                 return booted[0]["udid"]
             sim_list_str = "\n".join(
-                f"- {s['name']} ({s['runtime']}): {s['udid']} [{s['state']}]"
-                for s in name_matches
+                f"- {s['name']} ({s['runtime']}): {s['udid']} [{s['state']}]" for s in name_matches
             )
             raise IosError(
                 f"Multiple simulators matched '{target}'. Please specify UDID:\n{sim_list_str}"
@@ -328,19 +325,15 @@ def resolve_simulator(udid_or_name: str | None = None) -> str:
         partial_matches = [
             sim
             for sim in all_sims
-            if target.lower() in sim["name"].lower()
-            or target.lower() in sim["udid"].lower()
+            if target.lower() in sim["name"].lower() or target.lower() in sim["udid"].lower()
         ]
         if len(partial_matches) == 1:
             return partial_matches[0]["udid"]
         elif len(partial_matches) > 1:
             sim_list_str = "\n".join(
-                f"- {s['name']}: {s['udid']} [{s['state']}]"
-                for s in partial_matches[:5]
+                f"- {s['name']}: {s['udid']} [{s['state']}]" for s in partial_matches[:5]
             )
-            raise IosError(
-                f"Ambiguous simulator match for '{target}':\n{sim_list_str}"
-            )
+            raise IosError(f"Ambiguous simulator match for '{target}':\n{sim_list_str}")
 
         raise IosError(f"No simulator found matching '{target}'.")
 
@@ -354,9 +347,7 @@ def resolve_simulator(udid_or_name: str | None = None) -> str:
     if len(booted) == 1:
         return booted[0]["udid"]
 
-    sim_list_str = "\n".join(
-        f"- {s['name']} ({s['runtime']}): {s['udid']}" for s in booted
-    )
+    sim_list_str = "\n".join(f"- {s['name']} ({s['runtime']}): {s['udid']}" for s in booted)
     raise IosError(
         f"Multiple simulators are booted ({len(booted)}). Please specify UDID:\n{sim_list_str}"
     )
@@ -554,9 +545,7 @@ def send_push_notification(
     if "Simulator Target Bundle" not in payload_dict:
         payload_dict["Simulator Target Bundle"] = bundle_id
 
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".json", prefix="push_", delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", prefix="push_", delete=False) as f:
         json.dump(payload_dict, f, indent=2)
         tmp_path = f.name
 
@@ -583,9 +572,7 @@ def set_location(latitude: float, longitude: float, udid: str | None = None) -> 
     if not (-90.0 <= latitude <= 90.0) or not (-180.0 <= longitude <= 180.0):
         raise IosError(f"Invalid coordinates: lat {latitude}, lon {longitude}")
     target_udid = resolve_simulator(udid)
-    _run_simctl(
-        ["location", target_udid, "set", f"{latitude},{longitude}"], timeout=15.0
-    )
+    _run_simctl(["location", target_udid, "set", f"{latitude},{longitude}"], timeout=15.0)
     return f"Simulated location set to ({latitude}, {longitude}) on {target_udid}."
 
 
@@ -697,9 +684,7 @@ def take_screenshot_simulator(
         dest_path = Path(save_to).expanduser().resolve()
         dest_path.parent.mkdir(parents=True, exist_ok=True)
     else:
-        dest_fd, tmp_file = tempfile.mkstemp(
-            suffix=".png", prefix=f"sim_{target_udid[:8]}_"
-        )
+        dest_fd, tmp_file = tempfile.mkstemp(suffix=".png", prefix=f"sim_{target_udid[:8]}_")
         os.close(dest_fd)
         dest_path = Path(tmp_file)
 
@@ -910,7 +895,9 @@ def tap_element_simulator(
                 break
 
     if not target_el:
-        available = ", ".join(f"[{e.get('index')}] \"{e.get('text')}\"" for e in _LAST_LAYOUT_ELEMENTS[:8])
+        available = ", ".join(
+            f'[{e.get("index")}] "{e.get("text")}"' for e in _LAST_LAYOUT_ELEMENTS[:8]
+        )
         raise IosError(
             f"No element matching '{selector}' in current layout. "
             f"Available elements:\n{available}..."
@@ -921,7 +908,10 @@ def tap_element_simulator(
     y = int(pt_center.get("y", 0))
 
     tap_msg = tap_simulator(x, y, target_udid)
-    return f"Tapped [{target_el.get('index')}] \"{target_el.get('text')}\" at ({x}, {y}): {tap_msg}", (x, y)
+    return (
+        f'Tapped [{target_el.get("index")}] "{target_el.get("text")}" at ({x}, {y}): {tap_msg}',
+        (x, y),
+    )
 
 
 # ---- Simulator GUI Automation (Quartz CoreGraphics / AppleScript) -----------
@@ -1006,7 +996,9 @@ def swipe_simulator(
     end_y = win_y + title_bar_height + min(max(float(y2), 0.0), win_h - title_bar_height)
 
     pt_start = CGPoint(x=start_x, y=start_y)
-    evt_down = cg.CGEventCreateMouseEvent(None, _kCGEventLeftMouseDown, pt_start, _kCGMouseButtonLeft)
+    evt_down = cg.CGEventCreateMouseEvent(
+        None, _kCGEventLeftMouseDown, pt_start, _kCGMouseButtonLeft
+    )
     cg.CGEventPost(_kCGHIDEventTap, evt_down)
     cg.CFRelease(evt_down)
 
@@ -1017,7 +1009,9 @@ def swipe_simulator(
         curr_x = start_x + (end_x - start_x) * (i / steps)
         curr_y = start_y + (end_y - start_y) * (i / steps)
         pt_curr = CGPoint(x=curr_x, y=curr_y)
-        evt_drag = cg.CGEventCreateMouseEvent(None, _kCGEventLeftMouseDragged, pt_curr, _kCGMouseButtonLeft)
+        evt_drag = cg.CGEventCreateMouseEvent(
+            None, _kCGEventLeftMouseDragged, pt_curr, _kCGMouseButtonLeft
+        )
         cg.CGEventPost(_kCGHIDEventTap, evt_drag)
         cg.CFRelease(evt_drag)
         time.sleep(sleep_interval)
@@ -1064,7 +1058,9 @@ def press_button_simulator(button: str, udid: str | None = None) -> str:
       - 'volume_down': Cmd+Down Arrow
     """
     btn = button.lower().strip()
-    script = 'tell application "Simulator" to activate\ndelay 0.05\ntell application "System Events"\n'
+    script = (
+        'tell application "Simulator" to activate\ndelay 0.05\ntell application "System Events"\n'
+    )
 
     if btn == "home":
         script += 'keystroke "h" using {command down, shift down}\n'

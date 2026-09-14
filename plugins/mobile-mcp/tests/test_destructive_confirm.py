@@ -42,16 +42,6 @@ class TestDestructiveConfirm(unittest.TestCase):
             self.assertFalse(res.is_error)
             mock_del.assert_called_once_with("/sdcard/x.txt", None)
 
-    def test_file_delete_alias_passes_confirm(self):
-        with patch.object(android, "delete_file", return_value="deleted") as mock_del:
-            res = main.file_delete(device_path="/sdcard/x.txt")
-            self.assertTrue(res.is_error)
-            mock_del.assert_not_called()
-
-            res = main.file_delete(device_path="/sdcard/x.txt", confirm=True)
-            self.assertFalse(res.is_error)
-            mock_del.assert_called_once_with("/sdcard/x.txt", None)
-
     def test_reboot_requires_confirm(self):
         with patch.object(android, "reboot", return_value="rebooting") as mock_rb:
             res = main.reboot()
@@ -78,9 +68,7 @@ class TestDestructiveConfirm(unittest.TestCase):
             self.assertTrue(res.is_error)
             mock_un.assert_not_called()
 
-            res = main.ios_uninstall_app(
-                bundle_id="com.example.app", udid="U1", confirm=True
-            )
+            res = main.ios_uninstall_app(bundle_id="com.example.app", udid="U1", confirm=True)
             self.assertFalse(res.is_error)
             mock_un.assert_called_once_with("com.example.app", "U1")
 

@@ -8,21 +8,17 @@ First tool call makes macOS show an Automation prompt (control Notes) — click 
 
 from __future__ import annotations
 
-import sys
-
 from mcp.server.mcpserver import MCPServer
 from mcp.types import CallToolResult, TextContent
 
 import notes
 
-mcp = MCPServer("apple-notes", version="0.2.0")
+mcp = MCPServer("apple-notes", version="0.3.0")
 
 
 def _ok(text: str, **extra) -> CallToolResult:
     """Tool result: human-readable text + machine-readable structured fields."""
-    return CallToolResult(
-        content=[TextContent(type="text", text=text)], structuredContent=extra
-    )
+    return CallToolResult(content=[TextContent(type="text", text=text)], structured_content=extra)
 
 
 @mcp.tool()
@@ -32,12 +28,9 @@ def health_check() -> CallToolResult:
     try:
         info = notes.health()
         scope = sorted(notes.ALLOWED_FOLDERS) if notes.scoped() else None
-        scope_text = (
-            "unrestricted" if scope is None else "restricted to: " + ", ".join(scope)
-        )
+        scope_text = "unrestricted" if scope is None else "restricted to: " + ", ".join(scope)
         return _ok(
-            f"OK: Notes.app reachable, {info['accounts']} account(s), "
-            f"access scope: {scope_text}.",
+            f"OK: Notes.app reachable, {info['accounts']} account(s), access scope: {scope_text}.",
             accounts=info["accounts"],
             allowed_folders=scope,
         )
@@ -57,7 +50,9 @@ def list_folders() -> CallToolResult:
 
 
 @mcp.tool()
-def list_notes(folder: str | None = None, limit: int = 50, modified_since: str | None = None) -> CallToolResult:
+def list_notes(
+    folder: str | None = None, limit: int = 50, modified_since: str | None = None
+) -> CallToolResult:
     """List notes (id, title, folder, modified). Optionally filter by exact folder
     path (e.g. \"iCloud/Work\") or by ISO-8601 modified date (e.g. \"2026-09-01\")."""
     try:
@@ -65,7 +60,10 @@ def list_notes(folder: str | None = None, limit: int = 50, modified_since: str |
         lines = [f"- {n['name']} [id: {n['id']}]" for n in page]
         text = f"{len(page)} note(s)" + ("<br>" + "<br>".join(lines) if lines else "")
         return _ok(
-            text, notes=page, count=len(page), truncated=total > len(page),
+            text,
+            notes=page,
+            count=len(page),
+            truncated=total > len(page),
             scoped=notes.scoped(),
         )
     except notes.NotesError as e:
@@ -81,8 +79,13 @@ def get_note(note_id: str, format: str = "markdown") -> CallToolResult:
     try:
         n = notes.get_note(note_id, format=format)
         extra = dict(
-            id=n["id"], name=n["name"], html=n["body"], plaintext=n["plaintext"],
-            folder=n["folder"], created=n["created"], modified=n["modified"],
+            id=n["id"],
+            name=n["name"],
+            html=n["body"],
+            plaintext=n["plaintext"],
+            folder=n["folder"],
+            created=n["created"],
+            modified=n["modified"],
         )
         if "markdown" in n:
             extra["markdown"] = n["markdown"]

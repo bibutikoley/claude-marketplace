@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 # Ensure mobile-mcp plugin directory is in sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -40,19 +40,27 @@ class TestMobileMcp(unittest.TestCase):
         with patch.object(android, "run_device_shell") as mock_shell:
             # Activity starting with dot
             android.launch_app("com.example.app", ".MainActivity")
-            mock_shell.assert_called_with(["am", "start", "-W", "-n", "com.example.app/.MainActivity"], None)
+            mock_shell.assert_called_with(
+                ["am", "start", "-W", "-n", "com.example.app/.MainActivity"], None
+            )
 
             # Full activity path with dot prefix
             android.launch_app("com.example.app", "com.example.app.MainActivity")
-            mock_shell.assert_called_with(["am", "start", "-W", "-n", "com.example.app/com.example.app.MainActivity"], None)
+            mock_shell.assert_called_with(
+                ["am", "start", "-W", "-n", "com.example.app/com.example.app.MainActivity"], None
+            )
 
             # Activity already containing slash
             android.launch_app("com.example.app", "com.example.app/.MainActivity")
-            mock_shell.assert_called_with(["am", "start", "-W", "-n", "com.example.app/.MainActivity"], None)
+            mock_shell.assert_called_with(
+                ["am", "start", "-W", "-n", "com.example.app/.MainActivity"], None
+            )
 
             # Simple activity name without dot
             android.launch_app("com.example.app", "MainActivity")
-            mock_shell.assert_called_with(["am", "start", "-W", "-n", "com.example.app/.MainActivity"], None)
+            mock_shell.assert_called_with(
+                ["am", "start", "-W", "-n", "com.example.app/.MainActivity"], None
+            )
 
     def test_delete_file_protected_roots(self):
         # Exact root
@@ -103,7 +111,9 @@ class TestMobileMcp(unittest.TestCase):
                 android.resolve_serial(None)
 
         # Multiple devices online -> raises AdbError
-        with patch.object(android, "_parse_devices_short", return_value=[("d1", "device"), ("d2", "device")]):
+        with patch.object(
+            android, "_parse_devices_short", return_value=[("d1", "device"), ("d2", "device")]
+        ):
             with self.assertRaises(android.AndroidError):
                 android.resolve_serial(None)
 
@@ -149,7 +159,9 @@ class TestMobileMcp(unittest.TestCase):
             self.assertIn("com.app:id/submit", text)
 
     def test_open_url(self):
-        with patch.object(android, "run_device_shell", return_value="Starting: Intent ...") as mock_shell:
+        with patch.object(
+            android, "run_device_shell", return_value="Starting: Intent ..."
+        ) as mock_shell:
             out = android.open_url("https://example.com")
             mock_shell.assert_called_with(
                 ["am", "start", "-a", "android.intent.action.VIEW", "-d", "https://example.com"],
@@ -168,6 +180,14 @@ class TestMobileMcp(unittest.TestCase):
             mock_shell.assert_any_call(["input", "keyevent", "KEYCODE_WAKEUP"], None)
             mock_shell.assert_any_call(["input", "keyevent", "82"], None)
 
+    def test_pull_file_none_dest_defaults_to_cwd_basename(self):
+        with patch.object(android, "_run_adb", return_value="pulled") as mock_adb:
+            out = android.pull_file("/sdcard/docs/report.pdf", None)
+            self.assertEqual(out, "pulled")
+            mock_adb.assert_called_once_with(
+                ["pull", "/sdcard/docs/report.pdf", "report.pdf"], None
+            )
+
     def test_current_app_parsing(self):
         dumpsys_window_sample = """
         WINDOW MANAGER WINDOWS (dumpsys window windows)
@@ -178,19 +198,37 @@ class TestMobileMcp(unittest.TestCase):
             info = android.current_app()
             self.assertEqual(info["package"], "com.android.settings")
             self.assertEqual(info["activity"], "com.android.settings.Settings")
-            self.assertEqual(info["component"], "com.android.settings/com.android.settings.Settings")
+            self.assertEqual(
+                info["component"], "com.android.settings/com.android.settings.Settings"
+            )
 
     # ---- iOS Tests -------------------------------------------------------------
 
     def test_ios_resolve_developer_dir(self):
-        with patch.dict(os.environ, {"DEVELOPER_DIR": "/Applications/Xcode.app/Contents/Developer"}):
+        with patch.dict(
+            os.environ, {"DEVELOPER_DIR": "/Applications/Xcode.app/Contents/Developer"}
+        ):
             with patch("pathlib.Path.is_dir", return_value=True):
-                self.assertEqual(str(ios.resolve_developer_dir()), "/Applications/Xcode.app/Contents/Developer")
+                self.assertEqual(
+                    str(ios.resolve_developer_dir()), "/Applications/Xcode.app/Contents/Developer"
+                )
 
     def test_ios_resolve_simulator(self):
         sample_sims = [
-            {"name": "iPhone 16 Pro", "udid": "UDID-1", "state": "Shutdown", "isAvailable": True, "runtime": "iOS-18-0"},
-            {"name": "iPhone 15", "udid": "UDID-2", "state": "Booted", "isAvailable": True, "runtime": "iOS-17-0"},
+            {
+                "name": "iPhone 16 Pro",
+                "udid": "UDID-1",
+                "state": "Shutdown",
+                "isAvailable": True,
+                "runtime": "iOS-18-0",
+            },
+            {
+                "name": "iPhone 15",
+                "udid": "UDID-2",
+                "state": "Booted",
+                "isAvailable": True,
+                "runtime": "iOS-17-0",
+            },
         ]
         with patch.object(ios, "list_simulators", return_value=sample_sims):
             # Resolve by exact UDID
@@ -201,21 +239,35 @@ class TestMobileMcp(unittest.TestCase):
             self.assertEqual(ios.resolve_simulator(None), "UDID-2")
 
             # 0 booted
-            with patch.object(ios, "list_simulators", return_value=[{"name": "iPhone 16", "udid": "U1", "state": "Shutdown"}]):
+            with patch.object(
+                ios,
+                "list_simulators",
+                return_value=[{"name": "iPhone 16", "udid": "U1", "state": "Shutdown"}],
+            ):
                 with self.assertRaises(ios.IosError):
                     ios.resolve_simulator(None)
 
             # Multiple booted
-            with patch.object(ios, "list_simulators", return_value=[
-                {"name": "iPhone 16", "udid": "U1", "state": "Booted", "runtime": "iOS 18"},
-                {"name": "iPhone 15", "udid": "U2", "state": "Booted", "runtime": "iOS 17"},
-            ]):
+            with patch.object(
+                ios,
+                "list_simulators",
+                return_value=[
+                    {"name": "iPhone 16", "udid": "U1", "state": "Booted", "runtime": "iOS 18"},
+                    {"name": "iPhone 15", "udid": "U2", "state": "Booted", "runtime": "iOS 17"},
+                ],
+            ):
                 with self.assertRaises(ios.IosError):
                     ios.resolve_simulator(None)
 
     def test_ios_boot_and_shutdown(self):
         sample_sims = [
-            {"name": "iPhone 16 Pro", "udid": "UDID-1", "state": "Shutdown", "isAvailable": True, "runtime": "iOS-18-0"},
+            {
+                "name": "iPhone 16 Pro",
+                "udid": "UDID-1",
+                "state": "Shutdown",
+                "isAvailable": True,
+                "runtime": "iOS-18-0",
+            },
         ]
         with patch.object(ios, "list_simulators", return_value=sample_sims):
             with patch.object(ios, "_run_simctl") as mock_simctl, patch("subprocess.run"):
@@ -234,7 +286,9 @@ class TestMobileMcp(unittest.TestCase):
             with patch.object(ios, "_run_simctl") as mock_simctl:
                 res = ios.set_permission("camera", "com.example.app", "grant", "U1")
                 self.assertIn("grant", res.lower())
-                mock_simctl.assert_called_with(["privacy", "U1", "grant", "camera", "com.example.app"], timeout=15.0)
+                mock_simctl.assert_called_with(
+                    ["privacy", "U1", "grant", "camera", "com.example.app"], timeout=15.0
+                )
 
             # Invalid service
             with self.assertRaises(ios.IosError):
@@ -265,20 +319,30 @@ class TestMobileMcp(unittest.TestCase):
             with patch.object(ios, "_run_simctl") as mock_simctl:
                 res = ios.set_location(37.7749, -122.4194, "U1")
                 self.assertIn("37.7749", res)
-                mock_simctl.assert_called_with(["location", "U1", "set", "37.7749,-122.4194"], timeout=15.0)
+                mock_simctl.assert_called_with(
+                    ["location", "U1", "set", "37.7749,-122.4194"], timeout=15.0
+                )
 
             # Out of bounds lat
             with self.assertRaises(ios.IosError):
                 ios.set_location(100.0, 0.0, "U1")
 
     def test_ios_press_button_validation(self):
-        with patch.object(ios, "_run_applescript") as mock_as:
+        with patch.object(ios, "_run_applescript"):
             res = ios.press_button_simulator("home")
             self.assertIn("Pressed 'home'", res)
 
             # Invalid button
             with self.assertRaises(ios.IosError):
                 ios.press_button_simulator("self_destruct")
+
+    def test_ios_clipboard_paste_tool(self):
+        # Regression: the tool once passed text= twice (TypeError on success).
+        with patch.object(ios, "pbpaste_simulator", return_value="hello"):
+            res = main.ios_clipboard_paste()
+            self.assertFalse(res.is_error)
+            self.assertEqual(res.content[0].text, "hello")
+            self.assertEqual(res.structured_content, {"paste": "hello"})
 
     def test_ios_physical_devices_parsing(self):
         sample_json = {
@@ -302,6 +366,7 @@ class TestMobileMcp(unittest.TestCase):
 
     def test_ios_tools_registered(self):
         import asyncio
+
         tool_names = [t.name for t in asyncio.run(main.mcp.list_tools())]
         self.assertIn("ios_list_simulators", tool_names)
         self.assertIn("ios_boot_simulator", tool_names)
@@ -343,9 +408,19 @@ class TestMobileMcp(unittest.TestCase):
             "simctl_available": True,
             "devicectl_available": True,
             "booted_simulators": [{"name": "iPhone 16", "runtime": "iOS 18", "udid": "SIM-1"}],
-            "physical_devices": [{"name": "iPad", "modelName": "iPad Pro", "osVersion": "18.0", "identifier": "DEV-1"}],
+            "physical_devices": [
+                {
+                    "name": "iPad",
+                    "modelName": "iPad Pro",
+                    "osVersion": "18.0",
+                    "identifier": "DEV-1",
+                }
+            ],
         }
-        with patch.object(android, "health", return_value=fake_android_health), patch.object(ios, "health", return_value=fake_ios_health):
+        with (
+            patch.object(android, "health", return_value=fake_android_health),
+            patch.object(ios, "health", return_value=fake_ios_health),
+        ):
             res = main.health_check()
             self.assertFalse(res.is_error)
             text = res.content[0].text
@@ -358,10 +433,19 @@ class TestMobileMcp(unittest.TestCase):
     def test_unified_list_all_devices(self):
         fake_adb_devs = [{"serial": "emulator-5554", "state": "device", "model": "Pixel"}]
         fake_sims = [{"name": "iPhone 16", "runtime": "iOS 18", "udid": "SIM-1", "state": "Booted"}]
-        fake_pdevs = [{"name": "iPhone 15", "modelName": "iPhone 15", "osVersion": "18.0", "identifier": "DEV-1"}]
-        with patch.object(android, "list_devices", return_value=fake_adb_devs), \
-             patch.object(ios, "list_simulators", return_value=fake_sims), \
-             patch.object(ios, "list_physical_devices", return_value=fake_pdevs):
+        fake_pdevs = [
+            {
+                "name": "iPhone 15",
+                "modelName": "iPhone 15",
+                "osVersion": "18.0",
+                "identifier": "DEV-1",
+            }
+        ]
+        with (
+            patch.object(android, "list_devices", return_value=fake_adb_devs),
+            patch.object(ios, "list_simulators", return_value=fake_sims),
+            patch.object(ios, "list_physical_devices", return_value=fake_pdevs),
+        ):
             res = main.list_all_devices()
             self.assertFalse(res.is_error)
             text = res.content[0].text
@@ -394,8 +478,10 @@ class TestMobileMcp(unittest.TestCase):
             self.assertIn("(140, 215)", text)
             self.assertIn("General", text)
 
-        with patch.object(ios, "tap_simulator", return_value="Tapped Simulator at (140, 215)"), \
-             patch.object(ios, "resolve_simulator", return_value="U1"):
+        with (
+            patch.object(ios, "tap_simulator", return_value="Tapped Simulator at (140, 215)"),
+            patch.object(ios, "resolve_simulator", return_value="U1"),
+        ):
             ios._LAST_LAYOUT_ELEMENTS = sample_elements
             # Tap by index
             msg, coords = ios.tap_element_simulator("#1", "U1")

@@ -21,14 +21,14 @@ from mcp.types import CallToolResult, ImageContent, TextContent
 import android
 import ios
 
-mcp = MCPServer("mobile-mcp", version="0.2.0")
+mcp = MCPServer("mobile-mcp", version="0.3.0")
 
 
 def _ok(text: str, **extra) -> CallToolResult:
     """Tool result: human-readable text + machine-readable structured fields."""
     return CallToolResult(
         content=[TextContent(type="text", text=text)],
-        structuredContent=extra if extra else None,
+        structured_content=extra if extra else None,
     )
 
 
@@ -37,7 +37,7 @@ def _err(text: str, **extra) -> CallToolResult:
     return CallToolResult(
         content=[TextContent(type="text", text=text)],
         is_error=True,
-        structuredContent=extra if extra else None,
+        structured_content=extra if extra else None,
     )
 
 
@@ -60,11 +60,11 @@ def _shot(text: str, png: bytes, path: str, **extra) -> CallToolResult:
             ImageContent(
                 type="image",
                 data=base64.b64encode(png).decode(),
-                mimeType="image/png",
+                mime_type="image/png",
             ),
             TextContent(type="text", text=text),
         ],
-        structuredContent={"path": path, **extra},
+        structured_content={"path": path, **extra},
     )
 
 
@@ -80,12 +80,14 @@ def health_check() -> CallToolResult:
     try:
         h = android.health()
         android_health = h
-        lines.extend([
-            f"adb: {h['adb_version']} ({h['adb']})",
-            f"android CLI: {h['android_cli_version']}",
-            f"sdk: {h['sdk_root']}",
-            f"devices: {h['device_count']}",
-        ])
+        lines.extend(
+            [
+                f"adb: {h['adb_version']} ({h['adb']})",
+                f"android CLI: {h['android_cli_version']}",
+                f"sdk: {h['sdk_root']}",
+                f"devices: {h['device_count']}",
+            ]
+        )
         for d in h["devices"]:
             model = d.get("model", "?")
             lines.append(f"  - {d['serial']} [{d['state']}] model:{model}")
@@ -102,13 +104,15 @@ def health_check() -> CallToolResult:
     try:
         ih = ios.health()
         ios_health = ih
-        lines.extend([
-            f"Developer Dir: {ih.get('developer_dir') or 'Not found'}",
-            f"Xcode Version: {ih.get('xcode_version') or 'Not found'}",
-            f"simctl: {'Available' if ih.get('simctl_available') else 'Not available'}",
-            f"devicectl: {'Available' if ih.get('devicectl_available') else 'Not available'}",
-            f"Booted Simulators: {len(ih.get('booted_simulators', []))}",
-        ])
+        lines.extend(
+            [
+                f"Developer Dir: {ih.get('developer_dir') or 'Not found'}",
+                f"Xcode Version: {ih.get('xcode_version') or 'Not found'}",
+                f"simctl: {'Available' if ih.get('simctl_available') else 'Not available'}",
+                f"devicectl: {'Available' if ih.get('devicectl_available') else 'Not available'}",
+                f"Booted Simulators: {len(ih.get('booted_simulators', []))}",
+            ]
+        )
         for sim in ih.get("booted_simulators", []):
             lines.append(f"  - {sim['name']} ({sim['runtime']}): {sim['udid']}")
         if not ih.get("booted_simulators"):
@@ -117,7 +121,9 @@ def health_check() -> CallToolResult:
         pdevs = ih.get("physical_devices", [])
         lines.append(f"Physical Devices: {len(pdevs)}")
         for pd in pdevs:
-            lines.append(f"  - {pd['name']} ({pd['modelName']}, {pd['osVersion']}): {pd['identifier']}")
+            lines.append(
+                f"  - {pd['name']} ({pd['modelName']}, {pd['osVersion']}): {pd['identifier']}"
+            )
     except Exception as e:
         ios_health = {"error": str(e)}
         lines.append(f"iOS check failed: {e}")
@@ -158,7 +164,9 @@ def list_all_devices() -> CallToolResult:
     try:
         ios_pdevs = ios.list_physical_devices()
         for pd in ios_pdevs:
-            lines.append(f"- {pd['name']} ({pd['modelName']}, {pd['osVersion']}): {pd['identifier']}")
+            lines.append(
+                f"- {pd['name']} ({pd['modelName']}, {pd['osVersion']}): {pd['identifier']}"
+            )
         if not ios_pdevs:
             lines.append("(no physical iOS devices connected)")
     except Exception as e:
@@ -177,10 +185,12 @@ def list_devices() -> CallToolResult:
     """List connected devices/emulators (serial, state, model)."""
     try:
         devices = android.list_devices()
-        text = "\n".join(
-            f"- {d['serial']} [{d['state']}] model:{d.get('model', '?')}"
-            for d in devices
-        ) or "(no devices — connect USB phone or emulator_start)"
+        text = (
+            "\n".join(
+                f"- {d['serial']} [{d['state']}] model:{d.get('model', '?')}" for d in devices
+            )
+            or "(no devices — connect USB phone or emulator_start)"
+        )
         return _ok(text, devices=devices, count=len(devices))
     except android.AndroidError as e:
         return _err(f"ERROR: {e}")
@@ -206,9 +216,7 @@ def device_info(serial: str | None = None) -> CallToolResult:
 
 
 @mcp.tool()
-def get_layout(
-    serial: str | None = None, flat: bool = False, full: bool = False
-) -> CallToolResult:
+def get_layout(serial: str | None = None, flat: bool = False, full: bool = False) -> CallToolResult:
     """UI hierarchy as JSON (class, text, content-desc, resource-id, bounds,
     center, interactions). THE primary observation tool — always call this
     before screenshot. Tap coordinates come from node `center`s. First call
@@ -261,9 +269,7 @@ def get_layout(
                     "full tree in structuredContent]"
                 )
         else:
-            text_header = (
-                f"Layout: {count} top-level node(s). Full tree in structured content."
-            )
+            text_header = f"Layout: {count} top-level node(s). Full tree in structured content."
 
         return _ok(
             text_header,
@@ -344,16 +350,19 @@ def tap(x: int, y: int, serial: str | None = None) -> CallToolResult:
 
 @mcp.tool()
 def swipe(
-    x1: int, y1: int, x2: int, y2: int,
-    duration_ms: int = 300, serial: str | None = None,
+    x1: int,
+    y1: int,
+    x2: int,
+    y2: int,
+    duration_ms: int = 300,
+    serial: str | None = None,
 ) -> CallToolResult:
     """Swipe from (x1,y1) to (x2,y2). Slow swipes scroll better (larger
     duration_ms). Scroll slowly when hunting for off-screen elements."""
     try:
         android.swipe(x1, y1, x2, y2, duration_ms, serial)
         return _ok(
-            f"Swiped ({x1},{y1})→({x2},{y2}) in {duration_ms}ms. "
-            "Re-observe with get_layout."
+            f"Swiped ({x1},{y1})→({x2},{y2}) in {duration_ms}ms. Re-observe with get_layout."
         )
     except android.AndroidError as e:
         return _err(f"ERROR: {e}")
@@ -429,7 +438,9 @@ def force_stop(package: str, serial: str | None = None) -> CallToolResult:
 
 
 @mcp.tool()
-def clear_app_data(package: str, serial: str | None = None, confirm: bool = False) -> CallToolResult:
+def clear_app_data(
+    package: str, serial: str | None = None, confirm: bool = False
+) -> CallToolResult:
     """Wipe an app's data. DESTRUCTIVE — requires confirm=true after user approval."""
     if (denied := _require_confirm(confirm, "clear_app_data")) is not None:
         return denied
@@ -470,12 +481,14 @@ def install_apk(
 
 
 @mcp.tool()
-def pull_file(device_path: str, host_dest: str, serial: str | None = None) -> CallToolResult:
+def pull_file(
+    device_path: str, host_dest: str | None = None, serial: str | None = None
+) -> CallToolResult:
     """Pull a file from device to host. device_path absolute; host_dest is a
-    file path or an existing directory (parents created)."""
+    file path or an existing directory (parents created, default: cwd)."""
     try:
         out = android.pull_file(device_path, host_dest, serial)
-        return _ok(f"Pulled {device_path} → {host_dest}: {out}")
+        return _ok(f"Pulled {device_path} → {host_dest or '(cwd)'}: {out}")
     except android.AndroidError as e:
         return _err(f"ERROR: {e}")
 
@@ -502,7 +515,9 @@ def list_files(device_path: str, serial: str | None = None) -> CallToolResult:
 
 
 @mcp.tool()
-def delete_file(device_path: str, serial: str | None = None, confirm: bool = False) -> CallToolResult:
+def delete_file(
+    device_path: str, serial: str | None = None, confirm: bool = False
+) -> CallToolResult:
     """Delete a file on device. Refuses protected roots (/, /system, /data,
     …). DESTRUCTIVE — requires confirm=true after user approval."""
     if (denied := _require_confirm(confirm, "delete_file")) is not None:
@@ -552,9 +567,7 @@ def emulator_stop(device: str | None = None) -> CallToolResult:
 
 
 @mcp.tool()
-def logcat(
-    serial: str | None = None, lines: int = 200, clear: bool = False
-) -> CallToolResult:
+def logcat(serial: str | None = None, lines: int = 200, clear: bool = False) -> CallToolResult:
     """Recent device logs (default last 200 lines).
     clear=true wipes the buffer instead."""
     try:
@@ -576,7 +589,9 @@ def get_prop(name: str | None = None, serial: str | None = None) -> CallToolResu
 
 
 @mcp.tool()
-def reboot(mode: str | None = None, serial: str | None = None, confirm: bool = False) -> CallToolResult:
+def reboot(
+    mode: str | None = None, serial: str | None = None, confirm: bool = False
+) -> CallToolResult:
     """Reboot the device. mode: bootloader | recovery | omit (normal).
     DESTRUCTIVE — requires confirm=true after user approval."""
     if (denied := _require_confirm(confirm, "reboot")) is not None:
@@ -635,103 +650,7 @@ def run_shell(
         return _err(f"ERROR: {e}")
 
 
-# ---- Android Convenience Aliases & Navigation Helpers ------------------------
-
-
-@mcp.tool()
-def take_screenshot(
-    serial: str | None = None, annotate: bool = False, save_to: str | None = None
-) -> CallToolResult:
-    """Convenience alias for screenshot."""
-    return screenshot(serial=serial, annotate=annotate, save_to=save_to)
-
-
-@mcp.tool()
-def press_key(key: str, serial: str | None = None) -> CallToolResult:
-    """Convenience alias for key_event."""
-    return key_event(code=key, serial=serial)
-
-
-@mcp.tool()
-def press_back(serial: str | None = None) -> CallToolResult:
-    """Press the Android Back button."""
-    return key_event(code="BACK", serial=serial)
-
-
-@mcp.tool()
-def press_home(serial: str | None = None) -> CallToolResult:
-    """Press the Android Home button."""
-    return key_event(code="HOME", serial=serial)
-
-
-@mcp.tool()
-def press_recents(serial: str | None = None) -> CallToolResult:
-    """Press the Android Recents / App Switcher button."""
-    return key_event(code="APP_SWITCH", serial=serial)
-
-
-@mcp.tool()
-def press_power(serial: str | None = None) -> CallToolResult:
-    """Press the Android Power button."""
-    return key_event(code="POWER", serial=serial)
-
-
-@mcp.tool()
-def press_volume_up(serial: str | None = None) -> CallToolResult:
-    """Press the Android Volume Up button."""
-    return key_event(code="VOLUME_UP", serial=serial)
-
-
-@mcp.tool()
-def press_volume_down(serial: str | None = None) -> CallToolResult:
-    """Press the Android Volume Down button."""
-    return key_event(code="VOLUME_DOWN", serial=serial)
-
-
-@mcp.tool()
-def open_app(package: str, serial: str | None = None) -> CallToolResult:
-    """Launch an app by package name (alias for launch_app)."""
-    return launch_app(package=package, serial=serial)
-
-
-@mcp.tool()
-def stop_app(package: str, serial: str | None = None) -> CallToolResult:
-    """Force stop an app by package name (alias for force_stop)."""
-    return force_stop(package=package, serial=serial)
-
-
-@mcp.tool()
-def list_installed_apps(
-    third_party_only: bool = True,
-    filter_text: str | None = None,
-    serial: str | None = None,
-) -> CallToolResult:
-    """List installed applications on Android (alias for list_packages)."""
-    return list_packages(serial=serial, third_party_only=third_party_only, filter=filter_text)
-
-
-@mcp.tool()
-def file_push(host_path: str, device_path: str, serial: str | None = None) -> CallToolResult:
-    """Push file to Android device (alias for push_file)."""
-    return push_file(host_src=host_path, device_dest=device_path, serial=serial)
-
-
-@mcp.tool()
-def file_pull(device_path: str, host_dest: str | None = None, serial: str | None = None) -> CallToolResult:
-    """Pull file from Android device (alias for pull_file)."""
-    return pull_file(device_path=device_path, host_dest=host_dest, serial=serial)
-
-
-@mcp.tool()
-def file_list(device_path: str = "/sdcard", serial: str | None = None) -> CallToolResult:
-    """List files on Android device (alias for list_files)."""
-    return list_files(device_path=device_path, serial=serial)
-
-
-@mcp.tool()
-def file_delete(device_path: str, serial: str | None = None, confirm: bool = False) -> CallToolResult:
-    """Delete file on Android device (alias for delete_file). DESTRUCTIVE — requires confirm=true."""
-    return delete_file(device_path=device_path, serial=serial, confirm=confirm)
+# ---- Android Navigation Helpers (own logic, not aliases) ------------------------
 
 
 @mcp.tool()
@@ -746,7 +665,9 @@ def double_tap(x: int, y: int, serial: str | None = None) -> CallToolResult:
 
 
 @mcp.tool()
-def long_press(x: int, y: int, duration_ms: int = 1000, serial: str | None = None) -> CallToolResult:
+def long_press(
+    x: int, y: int, duration_ms: int = 1000, serial: str | None = None
+) -> CallToolResult:
     """Long press coordinate (x, y) with specified duration (default 1000ms)."""
     try:
         android.swipe(x, y, x, y, duration_ms, serial)
@@ -756,7 +677,9 @@ def long_press(x: int, y: int, duration_ms: int = 1000, serial: str | None = Non
 
 
 @mcp.tool()
-def scroll(dx: int = 0, dy: int = -500, duration_ms: int = 300, serial: str | None = None) -> CallToolResult:
+def scroll(
+    dx: int = 0, dy: int = -500, duration_ms: int = 300, serial: str | None = None
+) -> CallToolResult:
     """Relative swipe/scroll gesture (default scrolls down by 500px)."""
     try:
         android.swipe(500, 1500, 500 + dx, 1500 + dy, duration_ms, serial)
@@ -807,10 +730,7 @@ def ios_list_simulators(
     """List iOS Simulators. filter_runtime (e.g. 'iOS-18', 'watchOS') or filter_state ('Booted', 'Shutdown')."""
     try:
         sims = ios.list_simulators(filter_runtime=filter_runtime, filter_state=filter_state)
-        lines = [
-            f"- {s['name']} ({s['runtime']}): {s['udid']} [{s['state']}]"
-            for s in sims
-        ]
+        lines = [f"- {s['name']} ({s['runtime']}): {s['udid']} [{s['state']}]" for s in sims]
         text = "\n".join(lines) or "(no matching simulators found)"
         return _ok(text, simulators=sims, count=len(sims))
     except ios.IosError as e:
@@ -855,7 +775,7 @@ def ios_get_layout(udid: str | None = None) -> CallToolResult:
     try:
         elements = ios.get_layout_simulator(udid=udid)
         lines = [
-            f"[{el['index']}] \"{el['text']}\" at ({int(el['point_center']['x'])}, {int(el['point_center']['y'])})"
+            f'[{el["index"]}] "{el["text"]}" at ({int(el["point_center"]["x"])}, {int(el["point_center"]["y"])})'
             for el in elements
         ]
         text = "\n".join(lines) or "(no text elements detected on screen)"
@@ -1026,7 +946,10 @@ def ios_list_apps(udid: str | None = None) -> CallToolResult:
     """List installed applications on iOS Simulator."""
     try:
         apps = ios.list_apps_simulator(udid)
-        lines = [f"- {a.get('bundle_id', '?')} ({a.get('CFBundleDisplayName', a.get('CFBundleName', ''))})" for a in apps]
+        lines = [
+            f"- {a.get('bundle_id', '?')} ({a.get('CFBundleDisplayName', a.get('CFBundleName', ''))})"
+            for a in apps
+        ]
         text = "\n".join(lines) or "(no third-party apps found)"
         return _ok(text, apps=apps, count=len(apps))
     except ios.IosError as e:
@@ -1148,7 +1071,7 @@ def ios_clipboard_paste(udid: str | None = None) -> CallToolResult:
     """Read text from iOS Simulator pasteboard."""
     try:
         text = ios.pbpaste_simulator(udid)
-        return _ok(text, text=text)
+        return _ok(text, paste=text)
     except ios.IosError as e:
         return _err(f"ERROR: {e}")
 
@@ -1173,7 +1096,9 @@ def ios_device_info(device_uuid: str) -> CallToolResult:
     """Get detailed hardware and status properties for a physical iOS device."""
     try:
         info = ios.device_info_physical(device_uuid)
-        return _ok(f"Device info for {device_uuid}:\n{json.dumps(info, indent=2)}", **info)
+        # Nested (not splatted): devicectl keys are unmanaged and could
+        # collide with _ok's own parameters.
+        return _ok(f"Device info for {device_uuid}:\n{json.dumps(info, indent=2)}", info=info)
     except ios.IosError as e:
         return _err(f"ERROR: {e}")
 

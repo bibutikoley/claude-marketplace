@@ -39,7 +39,7 @@ Works out-of-the-box with any MCP-compliant client: **Claude Code**, **Claude De
 
 ### Unified Dual-Engine Design
 
-`mobile-mcp` exposes 81 typed tools on a single server endpoint (`mobile-mcp`). Agents can interact with Android and iOS seamlessly in the same workflow.
+`mobile-mcp` exposes 66 typed tools on a single server endpoint (`mobile-mcp`). Agents can interact with Android and iOS seamlessly in the same workflow.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -48,7 +48,7 @@ Works out-of-the-box with any MCP-compliant client: **Claude Code**, **Claude De
                                      │ JSON-RPC (MCP Protocol / stdio)
 ┌────────────────────────────────────▼────────────────────────────────────┐
 │                       mobile-mcp Server (main.py)                       │
-│    Unified health_check & list_all_devices • 81 Protocol-Compliant Tools│
+│    Unified health_check & list_all_devices • 66 Protocol-Compliant Tools│
 └──────────────────┬──────────────────────────────────┬───────────────────┘
                    │                                  │
          === Android Engine ===              === iOS Engine ===
@@ -112,11 +112,11 @@ Or add locally:
 claude mcp add mobile-mcp -s user -- uv run --project /path/to/claude-marketplace/plugins/mobile-mcp main.py
 ```
 
-Or standalone without a clone, pinned to `v0.2.0` (recommended — reproducible;
-drop `@v0.2.0` to track `main`):
+Or standalone without a clone, pinned to `v0.3.0` (recommended — reproducible;
+drop `@v0.3.0` to track `main`):
 
 ```bash
-claude mcp add mobile-mcp -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.2.0#subdirectory=plugins/mobile-mcp" mobile-mcp
+claude mcp add mobile-mcp -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/mobile-mcp" mobile-mcp
 ```
 
 ### Claude Desktop
@@ -201,7 +201,7 @@ Lists all connected Android phones, active emulators, booted iOS simulators, and
 | `device_info` | Model, manufacturer, Android OS version, SDK level | `serial` |
 | `get_screen_size` | Physical screen resolution (e.g. 1080x2400) | `serial` |
 | `get_layout` | **Cheap structured accessibility tree** (buttons, text, bounds) | `serial` |
-| `take_screenshot` | High-res PNG capture (inline image for visual inspection) | `serial`, `save_to` |
+| `screenshot` | High-res PNG capture (inline image for visual inspection) | `serial`, `annotate`, `save_to` |
 | `tap` | Tap coordinate `(x, y)` | `x`, `y`, `serial` |
 | `tap_element` | OCR/accessibility selector tap (e.g. `input tap #2`) | `selector`, `screenshot_path` |
 | `double_tap` | Double tap coordinate | `x`, `y`, `serial` |
@@ -210,22 +210,24 @@ Lists all connected Android phones, active emulators, booted iOS simulators, and
 | `scroll` | Relative swipe vector | `dx`, `dy`, `duration_ms` |
 | `input_text` | Enter text into focused field | `text`, `serial` |
 | `clear_text` | Clear characters from field | `count`, `serial` |
-| `press_key` | Hardware key (`KEYCODE_BACK`, `KEYCODE_HOME`, etc.) | `key`, `serial` |
-| `open_app` | Launch app by package name | `package`, `serial` |
-| `launch_app` | Launch specific activity | `package`, `activity`, `serial` |
-| `stop_app` | Force stop package | `package`, `serial` |
-| `list_installed_apps` | List third-party or system packages | `third_party_only`, `filter_text` |
-| `install_apk` | Install single or split APK files | `apk_path`, `serial` |
-| `uninstall_app` | Uninstall package | `package`, `serial` |
+| `key_event` | Hardware key (`BACK`, `HOME`, `APP_SWITCH`, `POWER`, `VOLUME_UP`, …) | `code`, `serial` |
+| `launch_app` | Launch app by package name, optionally a specific activity | `package`, `activity`, `serial` |
+| `force_stop` | Force stop package | `package`, `serial` |
+| `list_packages` | List third-party or system packages | `third_party_only`, `filter`, `serial` |
+| `install_apk` | Install single or split APK files | `host_path`, `serial` |
+| `uninstall_app` | Uninstall package (destructive — `confirm=true`) | `package`, `serial`, `confirm` |
 | `open_url` | Dispatch `android.intent.action.VIEW` deep link | `url`, `serial` |
 | `wake_screen` | Wake screen and dismiss keyguard | `serial` |
 | `open_notification_panel` | Expand notifications shade | `serial` |
 | `open_quick_settings` | Expand quick toggles shade | `serial` |
-| `press_back` / `press_home` / `press_recents` | Standard navigation keys | `serial` |
-| `press_power` / `press_volume_up` / `press_volume_down` | Physical buttons | `serial` |
 | `emulator_list` / `emulator_start` | Manage local Android Virtual Devices | `name`, `wipe_data`, `headless` |
-| `file_push` / `file_pull` / `file_list` / `file_delete` | Safe device filesystem operations | `remote_path`, `local_path` |
+| `push_file` / `pull_file` / `list_files` / `delete_file` | Safe device filesystem operations (`delete_file` needs `confirm=true`) | `host_src`, `device_dest`, `device_path`, `host_dest` |
 | `run_shell` | Escape hatch shell (opt-in whitelist protected) | `command`, `args`, `serial` |
+
+> Removed in v0.3.0 (were one-line aliases — use the canonical name):
+> `take_screenshot`→`screenshot`, `press_key`/`press_back`/`press_home`/`press_recents`/`press_power`/`press_volume_up`/`press_volume_down`→`key_event`,
+> `open_app`→`launch_app`, `stop_app`→`force_stop`, `list_installed_apps`→`list_packages`,
+> `file_push`→`push_file`, `file_pull`→`pull_file`, `file_list`→`list_files`, `file_delete`→`delete_file`.
 
 ---
 
@@ -321,7 +323,7 @@ Simulate user arrival in San Francisco:
 2. **Bundle & Package Sanitization**: Every package name and bundle ID is verified against strict alphanumeric and reverse-DNS schemas (`^[a-zA-Z0-9.\-_]+$`).
 3. **Protected Roots for Filesystem Ops**: Destructive operations (`file_delete`, `file_push`) strictly forbid targeting system partitions (`/system`, `/vendor`, `/dev`).
 4. **Opt-In Shell**: `run_shell` is disabled by default and requires setting `ANDROID_ADB_ALLOW_SHELL=1` in your environment.
-5. **Destructive-operation confirmation**: `uninstall_app`, `clear_app_data`, `delete_file`/`file_delete`, `reboot`, `ios_erase_simulator`, `ios_uninstall_app`, and `ios_device_reboot` are server-side gated — they refuse with a `confirm_required` error unless called with `confirm=true` after user approval.
+5. **Destructive-operation confirmation**: `uninstall_app`, `clear_app_data`, `delete_file`, `reboot`, `ios_erase_simulator`, `ios_uninstall_app`, and `ios_device_reboot` are server-side gated — they refuse with a `confirm_required` error unless called with `confirm=true` after user approval.
 
 ---
 
