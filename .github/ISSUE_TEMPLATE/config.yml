@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/bibutikoley/claude-marketplace/blob/main/SECURITY.md
+    about: Security issues must be reported privately per SECURITY.md — never through public issues.
