@@ -1,256 +1,427 @@
 import * as THREE from 'three';
 
-// Floating "plugin tile" constellation for the marketplace landing page.
-// Everything is procedural: canvas-painted abstract tiles, a particle field,
-// and a slow wireframe icosahedron for depth. No network calls, no assets.
-// The tiles are deliberately theme-free (varied hues, geometric glyphs) —
-// this is a marketplace page, not a single-plugin page.
+// ---------------------------------------------------------------------------
+// Preferences
+// ---------------------------------------------------------------------------
+const reduceMotion = window.matchMedia(
+  '(prefers-reduced-motion: reduce)',
+).matches;
 
+// ---------------------------------------------------------------------------
+// WebGL backdrop — a slow-drifting field of glowing points ("digital ocean").
+// Procedural, additive, and deliberately dim: backdrop art, not content.
+// Everything degrades gracefully: no WebGL → plain CSS aurora remains.
+// ---------------------------------------------------------------------------
 const canvas = document.getElementById('scene');
 let renderer = null;
 try {
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-} catch {
-  // No WebGL (old browser, disabled GPU): drop the backdrop, keep the page.
-  canvas.remove();
-}
-if (!renderer) {
-  // Nothing further to animate; UI wiring below is renderer-independent.
-} else {
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x0b0e14, 0.07);
-
-const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
-camera.position.set(0, 0.4, 9);
-
-// Muted jewel tones that sit well on the dark background.
-const TILE_HUES = ['#ffd60a', '#5eead4', '#a78bfa', '#7dd3fc', '#f9a8d4', '#bef264'];
-
-function roundRectPath(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-
-function makeTileTexture(seed) {
-  const s = 256;
-  const el = document.createElement('canvas');
-  el.width = s;
-  el.height = s;
-  const ctx = el.getContext('2d');
-  const hue = TILE_HUES[seed % TILE_HUES.length];
-  // Tile body.
-  roundRectPath(ctx, 8, 8, s - 16, s - 16, 48);
-  ctx.fillStyle = '#151b28';
-  ctx.fill();
-  ctx.globalAlpha = 0.55;
-  ctx.lineWidth = 6;
-  ctx.strokeStyle = hue;
-  ctx.stroke();
-  ctx.globalAlpha = 1;
-  // Centered abstract glyph, picked by seed.
-  ctx.strokeStyle = hue;
-  ctx.fillStyle = hue;
-  ctx.lineWidth = 14;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  const c = s / 2;
-  const r = 52;
-  switch (seed % 5) {
-    case 0: // ring
-      ctx.beginPath();
-      ctx.arc(c, c, r, 0, Math.PI * 2);
-      ctx.stroke();
-      break;
-    case 1: // plus
-      ctx.beginPath();
-      ctx.moveTo(c - r, c);
-      ctx.lineTo(c + r, c);
-      ctx.moveTo(c, c - r);
-      ctx.lineTo(c, c + r);
-      ctx.stroke();
-      break;
-    case 2: // triangle
-      ctx.beginPath();
-      ctx.moveTo(c, c - r);
-      ctx.lineTo(c + r * 0.9, c + r * 0.7);
-      ctx.lineTo(c - r * 0.9, c + r * 0.7);
-      ctx.closePath();
-      ctx.stroke();
-      break;
-    case 3: // bars
-      for (let b = -1; b <= 1; b++) {
-        const h = r * (b === 0 ? 1.4 : 0.9);
-        ctx.fillRect(c + b * 44 - 11, c - h / 2, 22, h);
-      }
-      break;
-    default: // dot with orbit ring
-      ctx.beginPath();
-      ctx.arc(c, c, 16, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 0.7;
-      ctx.lineWidth = 8;
-      ctx.beginPath();
-      ctx.arc(c, c, r, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-      break;
-  }
-  const tex = new THREE.CanvasTexture(el);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 4;
-  return tex;
-}
-
-// Fewer cards on small screens: cheaper to render, less visual clutter.
-const CARD_COUNT = window.innerWidth < 640 ? 8 : 14;
-const cards = [];
-const cardGeo = new THREE.PlaneGeometry(1.6, 1.6);
-for (let i = 0; i < CARD_COUNT; i++) {
-  const mat = new THREE.MeshBasicMaterial({
-    map: makeTileTexture(i + 1),
-    side: THREE.DoubleSide,
-    transparent: true,
-    // Dimmed on purpose: backdrop art, not content. The .scrim overlay and
-    // the wider orbit below keep the reading column clear.
-    opacity: 0.55,
+  renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: true,
+    alpha: true,
+    powerPreference: 'low-power',
   });
-  const mesh = new THREE.Mesh(cardGeo, mat);
-  const angle = (i / CARD_COUNT) * Math.PI * 2;
-  const radius = 6.0 + (i % 3) * 1.2;
-  mesh.position.set(
-    Math.cos(angle) * radius,
-    (i % 5) * 0.9 - 1.8,
-    Math.sin(angle) * radius * 0.6 - 1.5,
-  );
-  mesh.rotation.set(
-    (i % 4) * 0.12 - 0.18,
-    angle * 0.5,
-    ((i * 29) % 20) * 0.01 - 0.1,
-  );
-  mesh.userData = {
-    baseY: mesh.position.y,
-    speed: 0.25 + (i % 5) * 0.07,
-    phase: i * 1.3,
-    spin: (i % 2 === 0 ? 1 : -1) * (0.05 + (i % 3) * 0.02),
-  };
-  scene.add(mesh);
-  cards.push(mesh);
+} catch {
+  renderer = null; // old browser / disabled GPU
 }
 
-// Particle field.
-const starCount = 700;
-const starPos = new Float32Array(starCount * 3);
-for (let i = 0; i < starCount; i++) {
-  starPos[i * 3] = (Math.random() - 0.5) * 30;
-  starPos[i * 3 + 1] = (Math.random() - 0.5) * 18;
-  starPos[i * 3 + 2] = -4 - Math.random() * 14;
-}
-const starGeo = new THREE.BufferGeometry();
-starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-const stars = new THREE.Points(
-  starGeo,
-  new THREE.PointsMaterial({ color: 0x8ea2c8, size: 0.035, transparent: true, opacity: 0.5 }),
-);
-scene.add(stars);
-
-// Slow backdrop gyroscope.
-const gyro = new THREE.Mesh(
-  new THREE.IcosahedronGeometry(6.5, 1),
-  new THREE.MeshBasicMaterial({ color: 0x2a3a5f, wireframe: true, transparent: true, opacity: 0.2 }),
-);
-gyro.position.set(0, 0, -6);
-scene.add(gyro);
-
-// Mouse parallax.
-const pointer = { x: 0, y: 0 };
-window.addEventListener('pointermove', (e) => {
-  pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
-  pointer.y = (e.clientY / window.innerHeight) * 2 - 1;
-});
-
-function resize() {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-  renderer.setSize(w, h, false);
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-}
-window.addEventListener('resize', resize);
-resize();
-
-// Fade the backdrop as the reader scrolls past the hero, so the long
-// reference sections sit on a near-solid background.
-function fadeOnScroll() {
-  const f = Math.min(1, window.scrollY / (window.innerHeight * 0.85));
-  canvas.style.opacity = String(1 - f * 0.85);
-}
-window.addEventListener('scroll', fadeOnScroll, { passive: true });
-fadeOnScroll();
-
-const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const clock = new THREE.Clock();
-
-function tick() {
-  requestAnimationFrame(tick);
-  if (document.hidden) return; // background tab: skip work, resume on focus
-  const t = clock.getElapsedTime();
-  if (!reduceMotion) {
-    for (const card of cards) {
-      const u = card.userData;
-      card.position.y = u.baseY + Math.sin(t * u.speed + u.phase) * 0.35;
-      card.rotation.y += u.spin * 0.016;
-    }
-    stars.rotation.y = t * 0.008;
-    gyro.rotation.x = t * 0.05;
-    gyro.rotation.y = t * 0.07;
+if (!renderer) {
+  canvas.remove();
+} else {
+  try {
+    initBackdrop(renderer);
+  } catch {
+    canvas.remove();
   }
-  camera.position.x += (pointer.x * 0.9 - camera.position.x) * 0.04;
-  camera.position.y += (0.4 - pointer.y * 0.6 - camera.position.y) * 0.04;
-  camera.lookAt(0, 0, -1);
-  renderer.render(scene, camera);
 }
-tick();
-} // end WebGL scene (skipped entirely when WebGL is unavailable)
 
-// Copy install commands (kept in JS so the page needs no inline handlers).
+function initBackdrop(gl) {
+  gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  gl.setClearColor(0x000000, 0);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 80);
+  camera.position.set(0, 0.7, 9);
+  camera.lookAt(0, 0, 0);
+
+  // Point grid, slightly jittered so the lattice feels organic.
+  const COLS = 140;
+  const ROWS = 76;
+  const count = COLS * ROWS;
+  const positions = new Float32Array(count * 3);
+  const seeds = new Float32Array(count);
+  let i = 0;
+  for (let x = 0; x < COLS; x++) {
+    for (let y = 0; y < ROWS; y++) {
+      positions[i * 3] = (x / (COLS - 1) - 0.5) * 36 + (Math.random() - 0.5) * 0.09;
+      positions[i * 3 + 1] = (y / (ROWS - 1) - 0.5) * 21 + (Math.random() - 0.5) * 0.09;
+      positions[i * 3 + 2] = 0;
+      seeds[i] = Math.random() * Math.PI * 2;
+      i++;
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 1));
+
+  const uniforms = {
+    uTime: { value: 0 },
+    uPixelRatio: { value: gl.getPixelRatio() },
+    uPointer: { value: new THREE.Vector2(0, 0) },
+    uColorA: { value: new THREE.Color('#ffcf3f') },
+    uColorB: { value: new THREE.Color('#5ec8ff') },
+  };
+
+  const material = new THREE.ShaderMaterial({
+    uniforms,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    vertexShader: /* glsl */ `
+      attribute float aSeed;
+      uniform float uTime;
+      uniform float uPixelRatio;
+      uniform vec2 uPointer;
+      varying float vFade;
+      varying float vMix;
+
+      void main() {
+        vec3 pos = position;
+        float wave = sin(pos.x * 0.30 + uTime * 0.32 + aSeed)
+                   * cos(pos.y * 0.40 + uTime * 0.22 + aSeed * 0.6);
+        float swell = sin((pos.x + pos.y * 1.4) * 0.14 + uTime * 0.18);
+        pos.z += wave * 1.15 + swell * 0.55;
+        pos.x += uPointer.x * 0.6;
+        pos.y += uPointer.y * 0.4;
+
+        vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+        float radial = length(pos.xy / vec2(17.5, 10.5));
+        vFade = smoothstep(1.12, 0.12, radial) * (0.62 + 0.38 * (wave * 0.5 + 0.5));
+        vMix = clamp(0.5 + wave * 0.42 + pos.x * 0.014, 0.0, 1.0);
+
+        gl_PointSize = uPixelRatio * (1.0 + wave * 0.5) * (11.0 / max(4.0, -mv.z));
+        gl_PointSize = max(gl_PointSize, 0.8);
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      precision mediump float;
+      uniform vec3 uColorA;
+      uniform vec3 uColorB;
+      varying float vFade;
+      varying float vMix;
+
+      void main() {
+        float d = length(gl_PointCoord - 0.5);
+        float alpha = smoothstep(0.5, 0.08, d);
+        vec3 color = mix(uColorA, uColorB, vMix);
+        gl_FragColor = vec4(color, alpha * vFade * 0.68);
+      }
+    `,
+  });
+
+  const field = new THREE.Points(geometry, material);
+  field.position.z = -1.5;
+  scene.add(field);
+
+  // Pointer parallax, heavily smoothed.
+  const pointer = { x: 0, y: 0 };
+  const target = { x: 0, y: 0 };
+  window.addEventListener(
+    'pointermove',
+    (e) => {
+      target.x = (e.clientX / window.innerWidth) * 2 - 1;
+      target.y = (e.clientY / window.innerHeight) * 2 - 1;
+    },
+    { passive: true },
+  );
+
+  function resize() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    gl.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    uniforms.uPixelRatio.value = gl.getPixelRatio();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Fade the artwork out as the reader scrolls into the reference sections.
+  function fadeOnScroll() {
+    const f = Math.min(1, window.scrollY / (window.innerHeight * 0.9));
+    canvas.style.opacity = String(1 - f * 0.88);
+  }
+  window.addEventListener('scroll', fadeOnScroll, { passive: true });
+  fadeOnScroll();
+
+  function render() {
+    camera.position.x = pointer.x * 0.6;
+    camera.position.y = 0.7 - pointer.y * 0.35;
+    camera.lookAt(0, 0, 0);
+    gl.render(scene, camera);
+  }
+
+  if (reduceMotion) {
+    render(); // one static frame; no loop, no parallax
+    window.addEventListener('resize', render);
+    return;
+  }
+
+  const clock = new THREE.Clock();
+  function tick() {
+    requestAnimationFrame(tick);
+    if (document.hidden) return; // background tab: skip work, resume on focus
+    uniforms.uTime.value = clock.getElapsedTime();
+    pointer.x += (target.x - pointer.x) * 0.045;
+    pointer.y += (target.y - pointer.y) * 0.045;
+    uniforms.uPointer.value.set(pointer.x, pointer.y);
+    render();
+  }
+  tick();
+}
+
+// ---------------------------------------------------------------------------
+// Top navigation — solid backdrop once the page scrolls.
+// ---------------------------------------------------------------------------
+const topnav = document.querySelector('.topnav');
+function onScroll() {
+  if (topnav) topnav.classList.toggle('is-scrolled', window.scrollY > 8);
+}
+window.addEventListener('scroll', onScroll, { passive: true });
+onScroll();
+
+// ---------------------------------------------------------------------------
+// Scroll reveal — staggered, one-way, retired after it plays so hover
+// transitions on the same elements stay snappy. No JS → nothing hidden.
+// ---------------------------------------------------------------------------
+const revealEls = Array.from(document.querySelectorAll('[data-reveal]'));
+if ('IntersectionObserver' in window && !reduceMotion) {
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const el = entry.target;
+        el.classList.add('is-visible');
+        observer.unobserve(el);
+
+        const retire = () => {
+          el.classList.remove('reveal-init', 'is-visible');
+          el.style.removeProperty('--reveal-delay');
+        };
+        el.addEventListener('transitionend', retire, { once: true });
+        window.setTimeout(retire, 1600);
+      }
+    },
+    { rootMargin: '0px 0px -8% 0px', threshold: 0.05 },
+  );
+
+  for (const el of revealEls) {
+    el.classList.add('reveal-init');
+    const siblings = Array.from(el.parentElement?.children || []).filter(
+      (child) => child.hasAttribute('data-reveal'),
+    );
+    const index = siblings.indexOf(el);
+    if (index > 0) {
+      el.style.setProperty(
+        '--reveal-delay',
+        `${Math.min(index, 5) * 70}ms`,
+      );
+    }
+    observer.observe(el);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Card spotlight — pointer position piped into CSS variables.
+// ---------------------------------------------------------------------------
+for (const card of document.querySelectorAll('.card')) {
+  card.addEventListener(
+    'pointermove',
+    (e) => {
+      const rect = card.getBoundingClientRect();
+      card.style.setProperty('--mx', `${e.clientX - rect.left}px`);
+      card.style.setProperty('--my', `${e.clientY - rect.top}px`);
+    },
+    { passive: true },
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Syntax highlighting — tiny, dependency-free tokenizers. Copy buttons read
+// textContent, so the markup is presentation only.
+// ---------------------------------------------------------------------------
+const escapeHtml = (s) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+function highlightJson(src) {
+  const pattern =
+    /("(?:[^"\\]|\\.)*")(\s*:)?|\b(true|false|null)\b|(-?\d+(?:\.\d+)?)/g;
+  let out = '';
+  let last = 0;
+  src.replace(pattern, (match, str, colon, bool, num, offset) => {
+    out += escapeHtml(src.slice(last, offset));
+    if (str) {
+      out += colon
+        ? `<span class="tok-key">${escapeHtml(str)}</span>${escapeHtml(colon)}`
+        : `<span class="tok-str">${escapeHtml(str)}</span>`;
+    } else if (bool) {
+      out += `<span class="tok-bool">${escapeHtml(bool)}</span>`;
+    } else if (num) {
+      out += `<span class="tok-num">${escapeHtml(num)}</span>`;
+    }
+    last = offset + match.length;
+    return match;
+  });
+  return out + escapeHtml(src.slice(last));
+}
+
+function highlightToml(src) {
+  return src
+    .split('\n')
+    .map((line) => {
+      if (/^\s*\[[^\]]+\]\s*$/.test(line)) {
+        return `<span class="tok-sec">${escapeHtml(line)}</span>`;
+      }
+      const kv = line.match(/^(\s*)([A-Za-z0-9_.-]+)(\s*=\s*)(.*)$/);
+      if (!kv) return escapeHtml(line);
+      return (
+        kv[1] +
+        `<span class="tok-key">${escapeHtml(kv[2])}</span>` +
+        kv[3] +
+        highlightTomlValue(kv[4])
+      );
+    })
+    .join('\n');
+}
+
+function highlightTomlValue(value) {
+  const pattern = /("(?:[^"\\]|\\.)*")|\b(\d+(?:\.\d+)?)\b/g;
+  let out = '';
+  let last = 0;
+  value.replace(pattern, (match, str, num, offset) => {
+    out += escapeHtml(value.slice(last, offset));
+    out += str
+      ? `<span class="tok-str">${escapeHtml(str)}</span>`
+      : `<span class="tok-num">${escapeHtml(num)}</span>`;
+    last = offset + match.length;
+    return match;
+  });
+  return out + escapeHtml(value.slice(last));
+}
+
+function highlightShell(src) {
+  // Commands only count at the start of a line; flags and quoted strings
+  // anywhere; `VAR=` assignments only at the start of a line.
+  const token =
+    /^(\s*)(\/plugin|git|uvx|claude|python3|npm|npx|cd)\b|("(?:[^"\\]|\\.)*")|(--[\w-]+)|^([A-Z_][A-Z0-9_]*(?==))/g;
+  return src
+    .split('\n')
+    .map((line) => {
+      if (/^\s*#/.test(line)) {
+        return `<span class="tok-comment">${escapeHtml(line)}</span>`;
+      }
+      let out = '';
+      let last = 0;
+      line.replace(token, (match, ws, cmd, str, flag, varKey, offset) => {
+        out += escapeHtml(line.slice(last, offset));
+        if (cmd) {
+          out += `${escapeHtml(ws)}<span class="tok-cmd">${escapeHtml(cmd)}</span>`;
+        } else if (str) {
+          out += `<span class="tok-str">${escapeHtml(str)}</span>`;
+        } else if (flag) {
+          out += `<span class="tok-flag">${escapeHtml(flag)}</span>`;
+        } else if (varKey) {
+          out += `<span class="tok-var">${escapeHtml(varKey)}</span>`;
+        }
+        last = offset + match.length;
+        return match;
+      });
+      return out + escapeHtml(line.slice(last));
+    })
+    .join('\n');
+}
+
+for (const code of document.querySelectorAll('code[data-lang]')) {
+  const src = code.textContent;
+  let html = null;
+  try {
+    if (code.dataset.lang === 'json') html = highlightJson(src);
+    else if (code.dataset.lang === 'toml') html = highlightToml(src);
+    else if (code.dataset.lang === 'shell') html = highlightShell(src);
+  } catch {
+    html = null;
+  }
+  if (html !== null) code.innerHTML = html;
+}
+
+// ---------------------------------------------------------------------------
+// Copy buttons — hero, terminal, and per-snippet.
+// ---------------------------------------------------------------------------
 async function copyText(text) {
   try {
-    await navigator.clipboard.writeText(text);
-    return true;
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // fall through to the legacy path
+  }
+  try {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.top = '-1000px';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand('copy');
+    area.remove();
+    return ok;
   } catch {
     return false;
   }
 }
 
-function flash(btn, ok) {
-  const original = btn.dataset.label || btn.textContent;
-  btn.dataset.label = original;
-  btn.textContent = ok ? 'Copied' : 'Select & copy';
-  window.setTimeout(() => {
-    btn.textContent = original;
-  }, 1600);
+function readText(el) {
+  return (el?.innerText || el?.textContent || '').trim();
 }
 
-// Hero tabs: Claude Code vs Other agents.
+function flash(btn, ok, okLabel = 'Copied') {
+  const label = btn.querySelector('.copy-label') || btn;
+  if (!btn.dataset.label) btn.dataset.label = label.textContent;
+  label.textContent = ok ? okLabel : 'Select & copy';
+  btn.classList.toggle('is-copied', ok);
+  window.clearTimeout(btn._flashTimer);
+  btn._flashTimer = window.setTimeout(() => {
+    label.textContent = btn.dataset.label;
+    btn.classList.remove('is-copied');
+  }, 1700);
+}
+
+// Hero install tabs: Claude Code vs Other agents.
 const tabBtns = document.querySelectorAll('[data-install-tab]');
 const claudeCmd = document.getElementById('install-cmd');
 const otherCmd = document.getElementById('install-cmd-other');
+const claudePre = claudeCmd?.closest('pre');
 const hintClaude = document.getElementById('install-hint-claude');
 const hintOther = document.getElementById('install-hint-other');
+const terminalTitle = document.getElementById('terminal-title');
 
 function showTab(name) {
   const isClaude = name !== 'other';
-  if (claudeCmd) claudeCmd.hidden = !isClaude;
+  if (claudePre) claudePre.hidden = !isClaude;
   if (otherCmd) otherCmd.hidden = isClaude;
   if (hintClaude) hintClaude.hidden = !isClaude;
   if (hintOther) hintOther.hidden = isClaude;
+  if (terminalTitle) {
+    terminalTitle.textContent = isClaude
+      ? 'claude code — install'
+      : 'mcp config — other agents';
+  }
   for (const btn of tabBtns) {
     const active = btn.dataset.installTab === name;
     btn.classList.toggle('is-active', active);
@@ -262,20 +433,28 @@ for (const btn of tabBtns) {
   btn.addEventListener('click', () => showTab(btn.dataset.installTab));
 }
 
+function activeInstall() {
+  return otherCmd && !otherCmd.hidden ? otherCmd : claudeCmd;
+}
+
 const copyBtn = document.getElementById('copy-btn');
 if (copyBtn) {
   copyBtn.addEventListener('click', async () => {
-    const visible = otherCmd && !otherCmd.hidden ? otherCmd : claudeCmd;
-    const text = visible ? visible.innerText : '';
-    flash(copyBtn, await copyText(text));
+    flash(copyBtn, await copyText(readText(activeInstall())));
   });
 }
 
-// Per-snippet copy buttons in the Other agents section.
+const heroCopy = document.getElementById('hero-copy');
+if (heroCopy) {
+  heroCopy.addEventListener('click', async () => {
+    const ok = await copyText(readText(activeInstall()));
+    flash(heroCopy, ok, 'Copied to clipboard');
+  });
+}
+
 for (const btn of document.querySelectorAll('[data-copy-target]')) {
   btn.addEventListener('click', async () => {
     const target = document.getElementById(btn.dataset.copyTarget);
-    const text = target ? target.innerText : '';
-    flash(btn, await copyText(text));
+    flash(btn, await copyText(readText(target)));
   });
 }
