@@ -46,7 +46,7 @@ Or standalone, without the marketplace (no clone needed), pinned to `v0.3.0`
 (recommended — reproducible; drop `@v0.3.0` to track `main`):
 
 ```bash
-claude mcp add apple-notes -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes" apple-notes-mcp
+claude mcp add apple-notes-mcp -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes-mcp" apple-notes-mcp
 ```
 
 Then restart Claude Code (or `/mcp` to reload), and on the first tool call click
@@ -72,38 +72,38 @@ running in, writes the entry into that client's own MCP config (backing it
 up first), and tells you how to activate it.
 
 ```text
-You are an AI agent running inside an MCP client (Claude Code, Claude Desktop, Cursor, VS Code with Copilot, Windsurf Cascade, Cline, Roo Code, Codex CLI, Gemini CLI, opencode, or another MCP-compatible app). Configure the "apple-notes" MCP server for YOURSELF — write it into the MCP configuration of the client you are currently running in. Make the edit yourself; do not just print instructions.
+You are an AI agent running inside an MCP client (Claude Code, Claude Desktop, Cursor, VS Code with Copilot, Windsurf Cascade, Cline, Roo Code, Codex CLI, Gemini CLI, opencode, or another MCP-compatible app). Configure the "apple-notes-mcp" MCP server for YOURSELF — write it into the MCP configuration of the client you are currently running in. Make the edit yourself; do not just print instructions.
 
 Step 1 — OS check. Run `uname -s`. If the result is not `Darwin`, STOP and tell me this server needs macOS with Notes.app.
 
 Step 2 — Prerequisite check. Run `uvx --version`. If uvx is missing, STOP and tell me to install uv first from https://github.com/astral-sh/uv, then re-run this prompt once it is available.
 
 Step 3 — Detect your client and pick ONE config target (default to global/user scope unless I ask for project scope):
-- Claude Code CLI: just run `claude mcp add apple-notes -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes" apple-notes-mcp`, then skip to Step 6.
+- Claude Code CLI: just run `claude mcp add apple-notes-mcp -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes-mcp" apple-notes-mcp`, then skip to Step 6.
 - Claude Desktop: file ~/Library/Application Support/Claude/claude_desktop_config.json, JSON shape {"mcpServers": {...}}.
 - Cursor: file ~/.cursor/mcp.json (global) or .cursor/mcp.json in the current project, JSON shape {"mcpServers": {...}}.
 - VS Code (Copilot/Agent): file .vscode/mcp.json in the current project. NOTE: this file uses a "servers" key, NOT "mcpServers".
 - Windsurf: file ~/.codeium/windsurf/mcp_config.json, JSON shape {"mcpServers": {...}}.
 - Cline: the extension's MCP settings file (cline_mcp_settings.json), JSON shape {"mcpServers": {...}}.
 - Roo Code: global MCP settings (mcp_settings.json) or project .roo/mcp.json, JSON shape {"mcpServers": {...}}.
-- Codex CLI: file ~/.codex/config.toml, TOML table [mcp_servers.apple-notes] (key mcp_servers with underscore).
+- Codex CLI: file ~/.codex/config.toml, TOML table [mcp_servers.apple-notes-mcp] (key mcp_servers with underscore).
 - Gemini CLI: file ~/.gemini/settings.json (global) or .gemini/settings.json (project), JSON shape {"mcpServers": {...}}.
 - opencode: file opencode.json — project ./opencode.json (or .opencode/opencode.json) or global ~/.config/opencode/opencode.json, JSON shape {"mcp": {...}} with type "local". NOTE: opencode does NOT use "mcpServers", "servers", "command"+"args", or "env" — it uses "mcp", "command" as one array, and "environment".
 - Anything else: ASK me which file your client reads for MCP servers before writing anything. If you cannot determine your client, ASK me instead of guessing.
 
-Step 4 — Back up, then merge. If the file exists, back it up with a .bak suffix first. Add ONLY the "apple-notes" entry and preserve every existing entry. Create parent folders if needed. Minimal new-file skeletons: {"mcpServers": {}} for mcpServers clients, {"servers": {}} for VS Code, {"mcp": {}} for opencode (plus "$schema": "https://opencode.ai/config.json"), and for Codex just the table below in an empty file.
+Step 4 — Back up, then merge. If the file exists, back it up with a .bak suffix first. Add ONLY the "apple-notes-mcp" entry and preserve every existing entry. Create parent folders if needed. Minimal new-file skeletons: {"mcpServers": {}} for mcpServers clients, {"servers": {}} for VS Code, {"mcp": {}} for opencode (plus "$schema": "https://opencode.ai/config.json"), and for Codex just the table below in an empty file.
 
 Entry values (default, no clone needed):
 - command: uvx
-- args: ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes", "apple-notes-mcp"]
+- args: ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]
 - Codex TOML form:
-  [mcp_servers.apple-notes]
+  [mcp_servers.apple-notes-mcp]
   command = "uvx"
-  args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes", "apple-notes-mcp"]
+  args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]
 - opencode form (merge under top-level "mcp"):
-  {"mcp": {"apple-notes": {"type": "local", "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes", "apple-notes-mcp"]}}}
+  {"mcp": {"apple-notes-mcp": {"type": "local", "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]}}}
 
-If I say I have a local clone of bibutikoley/claude-marketplace, use it instead: replace the --from value with the absolute path to its plugins/apple-notes directory (absolute path only, never relative).
+If I say I have a local clone of bibutikoley/claude-marketplace, use it instead: replace the --from value with the absolute path to its plugins/apple-notes-mcp directory (absolute path only, never relative).
 
 If I give you a folder allowlist, add env {"APPLE_NOTES_MCP_ALLOWED_FOLDERS": "the comma-separated list I gave you"} to the entry — except opencode, where the key is "environment" (not "env").
 
@@ -119,9 +119,9 @@ Canonical config — works for most clients (`mcpServers` shape):
 ```json
 {
   "mcpServers": {
-    "apple-notes": {
+    "apple-notes-mcp": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes", "apple-notes-mcp"]
+      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]
     }
   }
 }
@@ -132,9 +132,9 @@ With an access-scope allowlist (optional):
 ```json
 {
   "mcpServers": {
-    "apple-notes": {
+    "apple-notes-mcp": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes", "apple-notes-mcp"],
+      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"],
       "env": {
         "APPLE_NOTES_MCP_ALLOWED_FOLDERS": "iCloud/Work,iCloud/Personal"
       }
@@ -161,9 +161,9 @@ VS Code (`.vscode/mcp.json`) variant:
 ```json
 {
   "servers": {
-    "apple-notes": {
+    "apple-notes-mcp": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes", "apple-notes-mcp"]
+      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]
     }
   }
 }
@@ -172,9 +172,9 @@ VS Code (`.vscode/mcp.json`) variant:
 Codex CLI (`~/.codex/config.toml`) variant:
 
 ```toml
-[mcp_servers.apple-notes]
+[mcp_servers.apple-notes-mcp]
 command = "uvx"
-args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes", "apple-notes-mcp"]
+args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]
 ```
 
 opencode (`opencode.json`) variant — note `mcp` (not `mcpServers`),
@@ -183,9 +183,9 @@ opencode (`opencode.json`) variant — note `mcp` (not `mcpServers`),
 ```json
 {
   "mcp": {
-    "apple-notes": {
+    "apple-notes-mcp": {
       "type": "local",
-      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes", "apple-notes-mcp"],
+      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"],
       "environment": {
         "APPLE_NOTES_MCP_ALLOWED_FOLDERS": ""
       }
@@ -199,9 +199,9 @@ With an access-scope allowlist, set the value instead of leaving it blank:
 ```json
 {
   "mcp": {
-    "apple-notes": {
+    "apple-notes-mcp": {
       "type": "local",
-      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes", "apple-notes-mcp"],
+      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"],
       "environment": {
         "APPLE_NOTES_MCP_ALLOWED_FOLDERS": "iCloud/Work,iCloud/Personal"
       }
@@ -217,15 +217,15 @@ Clone once, then use the checkout's absolute path as the `--from` value
 
 ```bash
 git clone https://github.com/bibutikoley/claude-marketplace.git
-# e.g. /Users/you/claude-marketplace/plugins/apple-notes
+# e.g. /Users/you/claude-marketplace/plugins/apple-notes-mcp
 ```
 
 ```json
 {
   "mcpServers": {
-    "apple-notes": {
+    "apple-notes-mcp": {
       "command": "uvx",
-      "args": ["--from", "<ABSOLUTE-PATH>/plugins/apple-notes", "apple-notes-mcp"]
+      "args": ["--from", "<ABSOLUTE-PATH>/plugins/apple-notes-mcp", "apple-notes-mcp"]
     }
   }
 }
@@ -233,7 +233,7 @@ git clone https://github.com/bibutikoley/claude-marketplace.git
 
 Same swap applies to the other shapes: in the VS Code (`servers`), Codex
 (`mcp_servers`), and opencode (`mcp`) snippets above, replace the `git+https://…` value with
-`<ABSOLUTE-PATH>/plugins/apple-notes`.
+`<ABSOLUTE-PATH>/plugins/apple-notes-mcp`.
 
 Notes:
 
@@ -272,10 +272,10 @@ tool. macOS + Notes.app only; no Node required.
   are HTML-escaped. Body writes are HTML under the hood, matching how Notes
   stores them.
 
-## Access scope
+## Access scope & security model
 
-Set `APPLE_NOTES_MCP_ALLOWED_FOLDERS` to restrict every tool to a folder
-allowlist (comma-separated names or full paths). Unset = unrestricted.
+By default the server can read and write **all** your Apple Notes. If
+that is more access than you want an agent to have, restrict it:
 
 ```bash
 APPLE_NOTES_MCP_ALLOWED_FOLDERS="iCloud/Work,iCloud/Personal" claude
@@ -284,18 +284,38 @@ APPLE_NOTES_MCP_ALLOWED_FOLDERS="iCloud/Work,iCloud/Personal" claude
 Or for a standalone install:
 
 ```bash
-claude mcp add apple-notes -s user \
+claude mcp add apple-notes-mcp -s user \
   -e APPLE_NOTES_MCP_ALLOWED_FOLDERS="iCloud/Work,iCloud/Personal" \
-  -- uvx --from <path-to>/plugins/apple-notes apple-notes-mcp
+  -- uvx --from <path-to>/plugins/apple-notes-mcp apple-notes-mcp
 ```
 
-Entries match by full path or bare leaf name: a full-path entry like
-`iCloud/Work` matches ONLY `iCloud/Work` (not `On My Mac/Work`), while a
-bare entry like `Work` matches any folder whose last segment is `Work` —
-prefer full paths like `iCloud/Work` to be precise). In scope: `list_notes` / `search_notes` / `list_folders` only
-return allowed folders; anything outside fails with an "outside the
-configured access scope" error. `create_note` then requires an explicit
-`folder`. Confirm the active scope any time with `health_check`.
+Matching is canonical: a full-path entry like `iCloud/Work` matches ONLY
+`iCloud/Work` (not `On My Mac/Work`), while a bare entry like `Work`
+matches any folder whose last segment is `Work` — prefer full paths to
+be precise. In scope, `list_notes` / `search_notes` / `list_folders`
+only return allowed folders; anything outside fails with an "outside
+the configured access scope" error, and `create_note` then requires an
+explicit `folder`. Confirm the active scope any time with
+`health_check`.
+
+What the server enforces vs what it does not:
+
+- **Enforced**: the folder allowlist on every read and write (notes are
+  authorized by their canonical `Account/...` folder path, resolved
+  live per call); JXA string escaping — all values are embedded via
+  `json.dumps`, so note titles/bodies cannot break out of the script
+  string context; serialized Apple Events (one scripting client at a
+  time — concurrent calls queue rather than corrupt).
+- **Not gated**: `update_note` (full overwrite), `append_note`, and
+  `delete_note` act immediately with no confirmation step — your safety
+  net is the MCP client's tool-approval flow. Note that deletes are
+  soft (notes land in Recently Deleted and stay listable until purged
+  manually in Notes.app), while overwrites are not recoverable from the
+  server side.
+- **OS permission**: the only system access needed is the macOS
+  Automation grant for controlling Notes.app — no Full Disk Access, no
+  network, no database. Notes.app itself remains the source of truth;
+  the server stores nothing.
 
 ## Runtime notes
 

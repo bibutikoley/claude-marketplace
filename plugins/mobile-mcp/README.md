@@ -317,13 +317,51 @@ Simulate user arrival in San Francisco:
 
 ---
 
-## Security Architecture & Configuration
+## Security Model
 
-1. **Subprocess Isolation**: All commands are executed as discrete argument vectors (`argv`) without shell expansion (`shell=False`), preventing injection attacks.
-2. **Bundle & Package Sanitization**: Every package name and bundle ID is verified against strict alphanumeric and reverse-DNS schemas (`^[a-zA-Z0-9.\-_]+$`).
-3. **Protected Roots for Filesystem Ops**: Destructive operations (`file_delete`, `file_push`) strictly forbid targeting system partitions (`/system`, `/vendor`, `/dev`).
-4. **Opt-In Shell**: `run_shell` is disabled by default and requires setting `ANDROID_ADB_ALLOW_SHELL=1` in your environment.
-5. **Destructive-operation confirmation**: `uninstall_app`, `clear_app_data`, `delete_file`, `reboot`, `ios_erase_simulator`, `ios_uninstall_app`, and `ios_device_reboot` are server-side gated — they refuse with a `confirm_required` error unless called with `confirm=true` after user approval.
+Treat `mobile-mcp` as **privileged local infrastructure**, not a plain
+utility. It can install APKs, wipe app data, delete device files, reboot
+devices, inject taps/swipes/keystrokes into Simulators, and run an
+allowlisted device shell. Anyone who can call its tools effectively holds
+the device. Run it locally, keep it on pinned releases (`@vX.Y.Z`), and
+leave your MCP client's tool-approval prompts on.
+
+### What the server enforces
+
+1. **No shell expansion, ever**: every subprocess runs as an `argv`
+   vector (`shell=False`), and all device-shell arguments pass through
+   one central `shlex.quote` point — package names, paths, and text can
+   never inject a second command.
+2. **Server-side confirmation gates**: `uninstall_app`,
+   `clear_app_data`, `delete_file`, `reboot`, `ios_erase_simulator`,
+   `ios_uninstall_app`, and `ios_device_reboot` refuse with a
+   `confirm_required` error unless called with `confirm=true` after you
+   approve. The check lives in the server, not the prompt.
+3. **Protected delete roots**: `delete_file` refuses `/`, `/system`,
+   `/vendor`, `/product`, `/apex`, `/data`, `/sbin`, `/proc`, `/sys`,
+   `/dev`, and anything under them. Delete a specific file under
+   `/sdcard` or an app sandbox instead.
+4. **Constrained APK installs**: `install_apk` only accepts `.apk` paths
+   under `ANDROID_ADB_ALLOWED_INSTALL_DIRS` (default `/tmp/`), rejects
+   symlinks, and validates `--install-options` against a flag pattern.
+5. **Opt-in raw shell**: `run_shell` is disabled unless
+   `ANDROID_ADB_ALLOW_SHELL=1`, and then only for commands listed in
+   `ANDROID_ADB_ALLOWED_COMMANDS` (default: `ls,cat,echo,pwd,pm,am,
+   dumpsys,getprop,input,screencap,screenrecord,logcat,ps,wm,settings,
+   uiautomator,cmd`).
+6. **Input sanitization**: `key_event` accepts alphanumerics/underscores
+   only; `input_text` refuses shell metacharacters and non-ASCII;
+   `open_url`, package names, bundle IDs, AVD names, and property names
+   are all pattern-validated before touching the device.
+
+### What the server does NOT gate
+
+Everything else acts **immediately** once called: `tap`, `swipe`,
+`input_text`, `launch_app`, `force_stop`, `install_apk`, `push_file`,
+`pull_file`, permission/location/appearance changes, clipboard, and
+media import. There is no undo. Your safety net for these is the MCP
+client's own tool-approval flow — do not disable it for this server,
+and prefer test devices/emulators over daily-driver hardware.
 
 ---
 

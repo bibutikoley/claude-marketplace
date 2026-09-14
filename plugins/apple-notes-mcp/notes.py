@@ -405,6 +405,8 @@ def delete_note(note_id: str) -> None:
 
 def create_folder(name: str) -> dict:
     """Create (or reuse) a folder at the default account's top level."""
+    if scoped():
+        require_folder_in_scope(name)
     return json.loads(_run_jxa(_make_folder_js(name)))
 
 

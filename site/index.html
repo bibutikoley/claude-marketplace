@@ -33,7 +33,7 @@
           Give your agent new superpowers with a single command. Every plugin
           ships production-grade tools that work across Claude Code, Cursor, VS Code,
           Windsurf, and more — featuring <strong>mobile-mcp</strong> for unified Android &amp;
-          iOS device automation and <strong>apple-notes</strong> for local macOS Notes CRUD.
+          iOS device automation and <strong>apple-notes-mcp</strong> for local macOS Notes CRUD.
           100% local, on-device, zero cloud daemons.
         </p>
         <ul class="hero-badges" aria-label="Highlights">
@@ -56,9 +56,9 @@
       "command": "uvx",
       "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
     },
-    "apple-notes": {
+    "apple-notes-mcp": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes", "apple-notes-mcp"],
+      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"],
       "env": {
         "APPLE_NOTES_MCP_ALLOWED_FOLDERS": ""
       }
@@ -116,7 +116,7 @@
           </article>
           <article class="card">
             <div class="card-head">
-              <h3>apple-notes</h3>
+              <h3>apple-notes-mcp</h3>
               <span class="version">v0.1.0</span>
               <span class="platform-tag">macOS</span>
             </div>
@@ -139,7 +139,7 @@
               <li>delete_folder</li>
               <li>health_check</li>
             </ul>
-            <p class="card-link"><a href="https://github.com/bibutikoley/claude-marketplace/tree/main/plugins/apple-notes" target="_blank" rel="noopener noreferrer">View apple-notes docs &amp; guide &rarr;</a></p>
+            <p class="card-link"><a href="https://github.com/bibutikoley/claude-marketplace/tree/main/plugins/apple-notes-mcp" target="_blank" rel="noopener noreferrer">View apple-notes docs &amp; guide &rarr;</a></p>
           </article>
           <article class="card card-ghost" aria-label="More plugins coming soon">
             <div class="card-head">
@@ -168,16 +168,16 @@
           <details class="prompt-details">
             <summary><span>Self-install prompt — paste this to your agent as-is</span><span class="details-hint">Expand to view &amp; copy</span></summary>
             <div class="config-block">
-            <pre><code id="agent-prompt">You are an AI agent running inside an MCP client (Claude Code, Claude Desktop, Cursor, VS Code with Copilot, Windsurf Cascade, Cline, Roo Code, Codex CLI, Gemini CLI, opencode, or another MCP-compatible app). Configure the "mobile-mcp" and "apple-notes" MCP servers for YOURSELF — write them into the MCP configuration of the client you are currently running in. Make the edit yourself; do not just print instructions.
+            <pre><code id="agent-prompt">You are an AI agent running inside an MCP client (Claude Code, Claude Desktop, Cursor, VS Code with Copilot, Windsurf Cascade, Cline, Roo Code, Codex CLI, Gemini CLI, opencode, or another MCP-compatible app). Configure the "mobile-mcp" and "apple-notes-mcp" MCP servers for YOURSELF — write them into the MCP configuration of the client you are currently running in. Make the edit yourself; do not just print instructions.
 
 Step 1 — Prerequisite check. Run `uvx --version`. If uvx is missing, STOP and tell me to install uv first from https://github.com/astral-sh/uv, then re-run this prompt once it is available.
 - For mobile-mcp: verify `adb` (Android) and/or `xcrun` (iOS) are installed.
-- For apple-notes: verify `uname -s` is `Darwin` (macOS with Notes.app).
+- For apple-notes-mcp: verify `uname -s` is `Darwin` (macOS with Notes.app).
 
 Step 2 — Detect your client and pick ONE config target (default to global/user scope unless I ask for project scope):
 - Claude Code CLI: run:
   claude mcp add mobile-mcp -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/mobile-mcp" mobile-mcp
-  claude mcp add apple-notes -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes" apple-notes-mcp
+  claude mcp add apple-notes-mcp -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes-mcp" apple-notes-mcp
   then skip to Step 5.
 - Claude Desktop: file ~/Library/Application Support/Claude/claude_desktop_config.json, JSON shape {"mcpServers": {...}}.
 - Cursor: file ~/.cursor/mcp.json (global) or .cursor/mcp.json in the current project, JSON shape {"mcpServers": {...}}.
@@ -185,22 +185,22 @@ Step 2 — Detect your client and pick ONE config target (default to global/user
 - Windsurf: file ~/.codeium/windsurf/mcp_config.json, JSON shape {"mcpServers": {...}}.
 - Cline: the extension's MCP settings file (cline_mcp_settings.json), JSON shape {"mcpServers": {...}}.
 - Roo Code: global MCP settings (mcp_settings.json) or project .roo/mcp.json, JSON shape {"mcpServers": {...}}.
-- Codex CLI: file ~/.codex/config.toml, TOML tables [mcp_servers.mobile-mcp] and [mcp_servers.apple-notes] (key mcp_servers with underscore).
+- Codex CLI: file ~/.codex/config.toml, TOML tables [mcp_servers.mobile-mcp] and [mcp_servers.apple-notes-mcp] (key mcp_servers with underscore).
 - Gemini CLI: file ~/.gemini/settings.json (global) or .gemini/settings.json (project), JSON shape {"mcpServers": {...}}.
 - opencode: file opencode.json — project ./opencode.json (or .opencode/opencode.json) or global ~/.config/opencode/opencode.json, JSON shape {"mcp": {...}} with type "local". NOTE: opencode does NOT use "mcpServers", "servers", "command"+"args", or "env" — it uses "mcp", "command" as one array, and "environment".
 - Anything else: ASK me which file your client reads for MCP servers before writing anything. If you cannot determine your client, ASK me instead of guessing.
 
-Step 3 — Back up, then merge. If the file exists, back it up with a .bak suffix first. Add the "mobile-mcp" and "apple-notes" entries and preserve every existing entry. Create parent folders if needed. Minimal new-file skeletons: {"mcpServers": {}} for mcpServers clients, {"servers": {}} for VS Code, {"mcp": {}} for opencode (plus "$schema": "https://opencode.ai/config.json"), and for Codex just the tables below in an empty file.
+Step 3 — Back up, then merge. If the file exists, back it up with a .bak suffix first. Add the "mobile-mcp" and "apple-notes-mcp" entries and preserve every existing entry. Create parent folders if needed. Minimal new-file skeletons: {"mcpServers": {}} for mcpServers clients, {"servers": {}} for VS Code, {"mcp": {}} for opencode (plus "$schema": "https://opencode.ai/config.json"), and for Codex just the tables below in an empty file.
 
 Entry values (default, no clone needed):
 - mobile-mcp:
   command: uvx
   args: ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
-- apple-notes:
+- apple-notes-mcp:
   command: uvx
-  args: ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes", "apple-notes-mcp"]
+  args: ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]
 
-If I say I have a local clone of bibutikoley/claude-marketplace, use it instead: replace the --from value with the absolute path to its plugins/mobile-mcp or plugins/apple-notes directory (absolute path only, never relative).
+If I say I have a local clone of bibutikoley/claude-marketplace, use it instead: replace the --from value with the absolute path to its plugins/mobile-mcp or plugins/apple-notes-mcp directory (absolute path only, never relative).
 
 For apple-notes, if I give you a folder allowlist, add env {"APPLE_NOTES_MCP_ALLOWED_FOLDERS": "the comma-separated list I gave you"} to the entry — except opencode, where the key is "environment" (not "env").
 
@@ -218,9 +218,9 @@ Step 5 — Tell me how to activate in THIS client (fully quit and reopen Claude 
       "command": "uvx",
       "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
     },
-    "apple-notes": {
+    "apple-notes-mcp": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes", "apple-notes-mcp"],
+      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"],
       "env": {
         "APPLE_NOTES_MCP_ALLOWED_FOLDERS": ""
       }
@@ -253,9 +253,9 @@ Step 5 — Tell me how to activate in THIS client (fully quit and reopen Claude 
       "command": "uvx",
       "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
     },
-    "apple-notes": {
+    "apple-notes-mcp": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes", "apple-notes-mcp"]
+      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]
     }
   }
 }</code></pre>
@@ -267,9 +267,9 @@ Step 5 — Tell me how to activate in THIS client (fully quit and reopen Claude 
 command = "uvx"
 args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
 
-[mcp_servers.apple-notes]
+[mcp_servers.apple-notes-mcp]
 command = "uvx"
-args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes", "apple-notes-mcp"]</code></pre>
+args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]</code></pre>
             <button type="button" class="copy-btn" data-copy-target="codex-config">Copy</button>
           </div>
           <div class="config-block">
@@ -280,9 +280,9 @@ args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#
       "type": "local",
       "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
     },
-    "apple-notes": {
+    "apple-notes-mcp": {
       "type": "local",
-      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes", "apple-notes-mcp"],
+      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"],
       "environment": {
         "APPLE_NOTES_MCP_ALLOWED_FOLDERS": ""
       }
@@ -304,9 +304,9 @@ args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#
       "command": "uvx",
       "args": ["--from", "/ABSOLUTE/PATH/plugins/mobile-mcp", "mobile-mcp"]
     },
-    "apple-notes": {
+    "apple-notes-mcp": {
       "command": "uvx",
-      "args": ["--from", "/ABSOLUTE/PATH/plugins/apple-notes", "apple-notes-mcp"]
+      "args": ["--from", "/ABSOLUTE/PATH/plugins/apple-notes-mcp", "apple-notes-mcp"]
     }
   }
 }</code></pre>
@@ -317,7 +317,7 @@ args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#
             then verify with the <code>health_check</code> tool. Optional folder allowlist for Notes via
             <code>APPLE_NOTES_MCP_ALLOWED_FOLDERS</code> in the entry's
             <code>env</code> (<code>environment</code> for opencode) — see the
-            <a href="https://github.com/bibutikoley/claude-marketplace/blob/main/plugins/apple-notes/README.md">plugin README</a>.
+            <a href="https://github.com/bibutikoley/claude-marketplace/blob/main/plugins/apple-notes-mcp/README.md">plugin README</a>.
           </p>
         </section>
 
@@ -327,7 +327,7 @@ args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#
             All plugins run <strong>100% locally on your machine</strong> using first-party OS and developer tooling. There are zero background cloud daemons, zero telemetry, and zero remote proxies.
           </p>
           <div class="config-block">
-            <p class="config-label"><strong>apple-notes:</strong> Access Scope</p>
+            <p class="config-label"><strong>apple-notes-mcp:</strong> Access Scope</p>
             <p>
               By default the server can access all Notes. Restrict tools to a folder allowlist via <code>APPLE_NOTES_MCP_ALLOWED_FOLDERS</code> (comma-separated folder names or full paths). Unset means unrestricted. Confirm active scope with <code>health_check</code>:
             </p>
@@ -345,7 +345,7 @@ args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#
           <h2 id="req-h">Requirements</h2>
           <ul>
             <li><strong>General:</strong> <code>uv</code> installed (Python &ge; 3.12)</li>
-            <li><strong>apple-notes:</strong> macOS with Notes.app and Automation permission</li>
+            <li><strong>apple-notes-mcp:</strong> macOS with Notes.app and Automation permission</li>
             <li><strong>mobile-mcp (Android):</strong> Android SDK platform-tools (<code>adb</code>) in <code>PATH</code>, USB debugging enabled or Android Emulator</li>
             <li><strong>mobile-mcp (iOS):</strong> macOS with Xcode 15+ (<code>xcrun simctl</code> for Simulators, <code>xcrun devicectl</code> for physical iOS 17+ devices)</li>
           </ul>

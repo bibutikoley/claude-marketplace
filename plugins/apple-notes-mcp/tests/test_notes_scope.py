@@ -62,6 +62,16 @@ class TestCanonicalScope(unittest.TestCase):
                 with self.assertRaises(notes.NotesError):
                     notes.create_note("T", "body", "On My Mac/Work")
 
+    def test_create_folder_gated_by_scope(self):
+        with with_scope("iCloud/Work"):
+            with patch.object(notes, "_run_jxa", side_effect=AssertionError("must not reach JXA")):
+                with self.assertRaises(notes.NotesError):
+                    notes.create_folder("Scratch")
+            with patch.object(
+                notes, "_run_jxa", return_value=json.dumps({"id": "1", "name": "Work"})
+            ):
+                notes.create_folder("Work")
+
     def test_require_note_in_scope_full_path(self):
         with with_scope("iCloud/Work"):
             with patch.object(notes, "_run_jxa", return_value=json.dumps("iCloud/Work")):

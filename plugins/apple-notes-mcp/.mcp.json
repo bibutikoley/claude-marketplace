@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "apple-notes": {
+    "apple-notes-mcp": {
       "command": "uvx",
       "args": ["--from", "${CLAUDE_PLUGIN_ROOT}", "apple-notes-mcp"]
     }
