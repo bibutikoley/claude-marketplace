@@ -36,10 +36,13 @@ To release:
 1. Write user-visible changes under `## Unreleased` in `CHANGELOG.md`.
 2. Stamp the train: `python3 scripts/bump_version.py <X.Y.Z>` (idempotent;
    never hand-edit the pinned URLs or version prose in the stamped docs).
-3. A human renames `## Unreleased` to `## v<X.Y.Z>` in `CHANGELOG.md` —
+3. Refresh the locks: `uv lock --project plugins/<name>` for each plugin —
+   the stamp changes every `pyproject.toml` version, and `verify.sh`'s
+   `uv sync --locked` fails on the resulting stale `uv.lock`.
+4. A human renames `## Unreleased` to `## v<X.Y.Z>` in `CHANGELOG.md` —
    history prose is never auto-stamped.
-4. `./scripts/verify.sh`, commit, then tag `v<X.Y.Z>` and push the tag.
-5. `.github/workflows/release.yml` validates the tag against every
+5. `./scripts/verify.sh`, commit, then tag `v<X.Y.Z>` and push the tag.
+6. `.github/workflows/release.yml` validates the tag against every
    manifest, re-runs `verify.sh`, and publishes a GitHub release from the
    matching changelog section — an empty or missing section fails the
    release.
