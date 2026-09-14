@@ -1,8 +1,14 @@
 """Validate the marketplace catalog against the plugin sources.
 
-Catches: duplicate plugin names, duplicate sources, name/version drift
-between marketplace.json <-> plugin.json <-> pyproject.toml, missing
-source dirs/files, invalid JSON.
+Catches: duplicate plugin names, duplicate sources, name/version/
+description drift between marketplace.json <-> plugin.json <->
+pyproject.toml <-> main.py server strings, .mcp.json server-key drift,
+missing source dirs/files, invalid JSON, and pinned/prose version drift
+in the living docs (root README, plugin READMEs, site/index.html).
+
+The release train rule: every marketplace entry carries the same version
+(single-source releases via scripts/bump_version.py). CHANGELOG.md is
+history prose and is deliberately excluded from the doc checks.
 """
 
 from __future__ import annotations
@@ -15,12 +21,33 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 MARKETPLACE = ROOT / ".claude-plugin" / "marketplace.json"
 
+PLUGINS = ["mobile-mcp", "apple-notes-mcp"]
+
+# Living docs that carry the current pinned version (URLs + prose).
+# CHANGELOG.md is history and is intentionally NOT in this list.
+DOC_FILES = [
+    ROOT / "README.md",
+    ROOT / "plugins" / "mobile-mcp" / "README.md",
+    ROOT / "plugins" / "apple-notes-mcp" / "README.md",
+    ROOT / "site" / "index.html",
+]
+
 REQUIRED_PLUGIN_FILES = [
     ".claude-plugin/plugin.json",
+    ".mcp.json",
     "pyproject.toml",
     "main.py",
     "README.md",
 ]
+
+MCP_SERVER_RE = re.compile(r'MCPServer\("([^"]+)", version="([^"]+)"\)')
+PYPROJECT_NAME_RE = re.compile(r'(?m)^name\s*=\s*["\']([^"\']+)["\']')
+PYPROJECT_VERSION_RE = re.compile(r'(?m)^version\s*=\s*["\']([^"\']+)["\']')
+PYPROJECT_DESC_RE = re.compile(r'(?m)^description\s*=\s*["\']([^"\']+)["\']')
+PINNED_URL_RE = re.compile(r"claude-marketplace@v(\d+\.\d+\.\d+)#subdirectory=")
+AT_VERSION_RE = re.compile(r"@v(\d+\.\d+\.\d+)")
+BACKTICK_VERSION_RE = re.compile(r"`@?v?(\d+\.\d+\.\d+)`")
+CODE_TAG_VERSION_RE = re.compile(r"<code>@?v(\d+\.\d+\.\d+)</code>")
 
 errors: list[str] = []
 warnings: list[str] = []
@@ -46,13 +73,72 @@ def load_json(path: Path) -> dict | None:
     return None
 
 
-def pyproject_version(pyproject: Path) -> str | None:
+def pyproject_field(
+    pyproject: Path, pattern: re.Pattern[str], field: str
+) -> str | None:
     try:
         text = pyproject.read_text(encoding="utf-8")
     except FileNotFoundError:
         return None
-    m = re.search(r'^version\s*=\s*["\']([^"\']+)["\']', text, re.MULTILINE)
-    return m.group(1) if m else None
+    m = pattern.search(text)
+    if not m:
+        warn(f"could not read {field} from {pyproject.relative_to(ROOT)}")
+        return None
+    return m.group(1)
+
+
+def main_py_server(main_py: Path) -> tuple[str | None, str | None]:
+    """Return (server_name, version) from the MCPServer(...) call."""
+    try:
+        text = main_py.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None, None
+    m = MCP_SERVER_RE.search(text)
+    if not m:
+        fail(f"{main_py.relative_to(ROOT)}: no MCPServer(name, version=...) found")
+        return None, None
+    return m.group(1), m.group(2)
+
+
+def doc_drift_versions(text: str) -> list[str]:
+    """Every current-version mention in a living doc, excluding history.
+
+    Covers @vX.Y.Z pins (URLs + prose), backticked `vX.Y.Z` / `X.Y.Z`
+    prose, and <code>vX.Y.Z</code> labels. Lines with "Removed in" are
+    history prose and are skipped.
+    """
+    found: list[str] = []
+    found.extend(AT_VERSION_RE.findall(text))
+    for line in text.splitlines():
+        if "Removed in" in line:
+            continue
+        found.extend(BACKTICK_VERSION_RE.findall(line))
+    for line in text.splitlines():
+        if "Removed in" in line:
+            continue
+        found.extend(CODE_TAG_VERSION_RE.findall(line))
+    return found
+
+
+def check_doc_files(train_version: str) -> None:
+    for path in DOC_FILES:
+        rel = path.relative_to(ROOT)
+        try:
+            text = path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            fail(f"missing doc file: {rel}")
+            continue
+        urls = PINNED_URL_RE.findall(text)
+        if not urls:
+            fail(f"{rel}: no pinned claude-marketplace@vX.Y.Z URLs found")
+        for v in urls:
+            if v != train_version:
+                fail(
+                    f"{rel}: pinned URL version 'v{v}' != release train 'v{train_version}'"
+                )
+        for v in doc_drift_versions(text):
+            if v != train_version:
+                fail(f"{rel}: prose version 'v{v}' != release train 'v{train_version}'")
 
 
 def main() -> int:
@@ -69,6 +155,20 @@ def main() -> int:
         fail("marketplace.json: 'plugins' must be a non-empty list")
         return 1
 
+    names = {p["name"] for p in marketplace["plugins"] if isinstance(p, dict)}
+    if names != set(PLUGINS):
+        fail(f"marketplace plugins {sorted(names)} != expected {PLUGINS}")
+
+    # Single release train: every entry carries the same version.
+    train_versions = {p.get("version") for p in plugins if isinstance(p, dict)}
+    train_version: str | None = None
+    if len(train_versions) == 1:
+        train_version = next(iter(train_versions))
+    else:
+        fail(
+            f"marketplace entries diverge from a single release train: {sorted(train_versions)}"
+        )
+
     seen_names: dict[str, str] = {}
     seen_sources: dict[str, str] = {}
 
@@ -76,6 +176,7 @@ def main() -> int:
         name = entry.get("name")
         source = entry.get("source")
         version = entry.get("version")
+        description = entry.get("description")
         if not name or not source:
             fail(f"marketplace entry missing name/source: {entry!r}")
             continue
@@ -116,31 +217,62 @@ def main() -> int:
         manifest = load_json(manifest_path)
         if manifest is None:
             continue
-        manifest_name = manifest.get("name")
-        manifest_version = manifest.get("version")
-        if manifest_name != name:
+        if manifest.get("name") != name:
             fail(
                 f"plugin '{name}': marketplace name does not match "
-                f"plugin.json name '{manifest_name}'"
+                f"plugin.json name '{manifest.get('name')}'"
             )
-        if version != manifest_version:
+        if version != manifest.get("version"):
             fail(
                 f"plugin '{name}': marketplace version '{version}' != "
-                f"plugin.json version '{manifest_version}'"
+                f"plugin.json version '{manifest.get('version')}'"
+            )
+        if description and manifest.get("description") != description:
+            fail(
+                f"plugin '{name}': marketplace description does not match "
+                f"plugin.json description (duplicate manifest drift)"
             )
 
-        py_version = pyproject_version(plugin_dir / "pyproject.toml")
-        if py_version is None:
-            warn(f"plugin '{name}': could not read version from pyproject.toml")
-        elif version != py_version:
+        pyproject = plugin_dir / "pyproject.toml"
+        py_name = pyproject_field(pyproject, PYPROJECT_NAME_RE, "name")
+        if py_name is not None and py_name != name:
+            fail(f"plugin '{name}': pyproject.toml name '{py_name}' != '{name}'")
+        py_version = pyproject_field(pyproject, PYPROJECT_VERSION_RE, "version")
+        if py_version is not None and version != py_version:
             fail(
                 f"plugin '{name}': marketplace version '{version}' != "
                 f"pyproject.toml version '{py_version}'"
             )
+        py_desc = pyproject_field(pyproject, PYPROJECT_DESC_RE, "description")
+        if py_desc is not None and description and py_desc != description:
+            fail(
+                f"plugin '{name}': marketplace description does not match "
+                f"pyproject.toml description (duplicate manifest drift)"
+            )
+
+        server_name, server_version = main_py_server(plugin_dir / "main.py")
+        if server_name is not None and server_name != name:
+            fail(f"plugin '{name}': main.py MCPServer name '{server_name}' != '{name}'")
+        if server_version is not None and version != server_version:
+            fail(
+                f"plugin '{name}': marketplace version '{version}' != "
+                f"main.py MCPServer version '{server_version}'"
+            )
 
         mcp_json = plugin_dir / ".mcp.json"
         if mcp_json.is_file():
-            load_json(mcp_json)
+            mcp_data = load_json(mcp_json)
+            if mcp_data is not None:
+                servers = mcp_data.get("mcpServers")
+                if not isinstance(servers, dict) or set(servers) != {name}:
+                    fail(
+                        f"plugin '{name}': .mcp.json mcpServers keys "
+                        f"{sorted(servers) if isinstance(servers, dict) else servers!r} "
+                        f"!= ['{name}']"
+                    )
+
+    if train_version is not None:
+        check_doc_files(train_version)
 
     print(f"validated {len(plugins)} plugin(s): {', '.join(sorted(seen_names))}")
     if warnings and not errors:

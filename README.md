@@ -127,14 +127,20 @@ or [`plugins/apple-notes-mcp/README.md`](plugins/apple-notes-mcp/README.md#other
 
 ## Versioning
 
-`0.4.0` in `marketplace.json`, each plugin's `plugin.json` /
-`pyproject.toml`, and the MCP server strings. Releases are stamped with
-one command — `python3 scripts/bump_version.py <X.Y.Z>` (updates
-manifests, packaging, server strings, and pinned install URLs) — and
-checked by `scripts/validate_marketplace.py`. All install snippets
-default to the pinned `git+https://...@v0.4.0#subdirectory=...` form;
-drop the `@v0.4.0` to track `main`. Tag the release after CI passes
-(`git tag vX.Y.Z`).
+Single release train: `0.4.0` everywhere — `marketplace.json`, each
+plugin's `plugin.json` / `pyproject.toml`, the MCP server strings,
+`.mcp.json` server keys, and the pinned install URLs plus
+current-version prose in the READMEs and `site/index.html`. Releases are
+stamped with one command — `python3 scripts/bump_version.py <X.Y.Z>` —
+and checked by `scripts/validate_marketplace.py` (names, versions,
+descriptions, server strings, `.mcp.json` keys, pinned URLs/prose) plus
+the release-system suite `tests/test_release.py`. CI installs from the
+per-plugin `uv.lock` files (`uv sync --locked`), so
+`uv sync --project plugins/<name>` reproduces CI exactly. All install
+snippets default to the pinned
+`git+https://...@v0.4.0#subdirectory=...` form; drop the `@v0.4.0` to
+track `main`. History prose (`Removed in v0.3.0`, CHANGELOG headings) is
+never auto-stamped. Tag the release after CI passes (`git tag vX.Y.Z`).
 
 ## Dependencies
 

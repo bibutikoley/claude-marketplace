@@ -1,7 +1,7 @@
 {
   "name": "mobile-mcp",
   "displayName": "Mobile MCP",
-  "description": "Unified MCP server for cross-platform mobile device control (Android via ADB + iOS via Xcode simctl/devicectl)",
+  "description": "Unified MCP server for Android (ADB) and iOS (Xcode simctl/devicectl) device control",
   "version": "0.4.0",
   "author": {
     "name": "Bibuti Koley",

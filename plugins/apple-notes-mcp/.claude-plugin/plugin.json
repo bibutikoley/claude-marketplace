@@ -1,7 +1,7 @@
 {
   "name": "apple-notes-mcp",
   "displayName": "Apple Notes MCP",
-  "description": "MCP server giving Claude Code CRUD access to Apple Notes",
+  "description": "MCP server giving Claude Code CRUD access to Apple Notes via AppleScript",
   "version": "0.4.0",
   "author": {
     "name": "Bibuti Koley",
