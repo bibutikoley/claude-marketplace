@@ -42,11 +42,11 @@ client that supports stdio MCP servers.
 /plugin install apple-notes-mcp@claude-marketplace
 ```
 
-Or standalone, without the marketplace (no clone needed), pinned to `v0.4.0`
-(recommended — reproducible; drop `@v0.4.0` to track `main`):
+Or standalone, without the marketplace (no clone needed), pinned to `v0.5.0`
+(recommended — reproducible; drop `@v0.5.0` to track `main`):
 
 ```bash
-claude mcp add apple-notes-mcp -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.4.0#subdirectory=plugins/apple-notes-mcp" apple-notes-mcp
+claude mcp add apple-notes-mcp -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.5.0#subdirectory=plugins/apple-notes-mcp" apple-notes-mcp
 ```
 
 Then restart Claude Code (or `/mcp` to reload), and on the first tool call click
@@ -79,7 +79,7 @@ Step 1 — OS check. Run `uname -s`. If the result is not `Darwin`, STOP and tel
 Step 2 — Prerequisite check. Run `uvx --version`. If uvx is missing, STOP and tell me to install uv first from https://github.com/astral-sh/uv, then re-run this prompt once it is available.
 
 Step 3 — Detect your client and pick ONE config target (default to global/user scope unless I ask for project scope):
-- Claude Code CLI: just run `claude mcp add apple-notes-mcp -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.4.0#subdirectory=plugins/apple-notes-mcp" apple-notes-mcp`, then skip to Step 6.
+- Claude Code CLI: just run `claude mcp add apple-notes-mcp -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.5.0#subdirectory=plugins/apple-notes-mcp" apple-notes-mcp`, then skip to Step 6.
 - Claude Desktop: file ~/Library/Application Support/Claude/claude_desktop_config.json, JSON shape {"mcpServers": {...}}.
 - Cursor: file ~/.cursor/mcp.json (global) or .cursor/mcp.json in the current project, JSON shape {"mcpServers": {...}}.
 - VS Code (Copilot/Agent): file .vscode/mcp.json in the current project. NOTE: this file uses a "servers" key, NOT "mcpServers".
@@ -95,13 +95,13 @@ Step 4 — Back up, then merge. If the file exists, back it up with a .bak suffi
 
 Entry values (default, no clone needed):
 - command: uvx
-- args: ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.4.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]
+- args: ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.5.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]
 - Codex TOML form:
   [mcp_servers.apple-notes-mcp]
   command = "uvx"
-  args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.4.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]
+  args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.5.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]
 - opencode form (merge under top-level "mcp"):
-  {"mcp": {"apple-notes-mcp": {"type": "local", "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.4.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]}}}
+  {"mcp": {"apple-notes-mcp": {"type": "local", "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.5.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]}}}
 
 If I say I have a local clone of bibutikoley/claude-marketplace, use it instead: replace the --from value with the absolute path to its plugins/apple-notes-mcp directory (absolute path only, never relative).
 
@@ -121,7 +121,7 @@ Canonical config — works for most clients (`mcpServers` shape):
   "mcpServers": {
     "apple-notes-mcp": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.4.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]
+      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.5.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]
     }
   }
 }
@@ -134,7 +134,7 @@ With an access-scope allowlist (optional):
   "mcpServers": {
     "apple-notes-mcp": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.4.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"],
+      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.5.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"],
       "env": {
         "APPLE_NOTES_MCP_ALLOWED_FOLDERS": "iCloud/Work,iCloud/Personal"
       }
@@ -163,7 +163,7 @@ VS Code (`.vscode/mcp.json`) variant:
   "servers": {
     "apple-notes-mcp": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.4.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]
+      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.5.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]
     }
   }
 }
@@ -174,7 +174,7 @@ Codex CLI (`~/.codex/config.toml`) variant:
 ```toml
 [mcp_servers.apple-notes-mcp]
 command = "uvx"
-args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.4.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]
+args = ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.5.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]
 ```
 
 opencode (`opencode.json`) variant — note `mcp` (not `mcpServers`),
@@ -185,7 +185,7 @@ opencode (`opencode.json`) variant — note `mcp` (not `mcpServers`),
   "mcp": {
     "apple-notes-mcp": {
       "type": "local",
-      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.4.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"],
+      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.5.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"],
       "environment": {
         "APPLE_NOTES_MCP_ALLOWED_FOLDERS": ""
       }
@@ -201,7 +201,7 @@ With an access-scope allowlist, set the value instead of leaving it blank:
   "mcp": {
     "apple-notes-mcp": {
       "type": "local",
-      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.4.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"],
+      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.5.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"],
       "environment": {
         "APPLE_NOTES_MCP_ALLOWED_FOLDERS": "iCloud/Work,iCloud/Personal"
       }
@@ -240,8 +240,8 @@ Notes:
 - First start of Option A takes ~30s (clone + build + dependency install);
   after that `uvx` reuses its cache and starts fast. To pick up updates, run
   `uv tool update apple-notes-mcp` or bump the pin below.
-- All snippets above default to the pinned `@v0.4.0` form. To track `main`
-  instead (mutable, not reproducible), drop the `@v0.4.0` from the URL.
+- All snippets above default to the pinned `@v0.5.0` form. To track `main`
+  instead (mutable, not reproducible), drop the `@v0.5.0` from the URL.
   To move to another ref, swap in `@<commit-or-tag>` before the `#`.
 
 After configuring any client, trigger one tool (e.g. ask it to list folders) and

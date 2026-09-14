@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.5.0
+
 - Release hardening: `scripts/validate_release.py` verifies a `vX.Y.Z` tag
   against `marketplace.json`, every `plugin.json` / `pyproject.toml`, the
   MCP runtime versions, and a non-empty `## vX.Y.Z` changelog section.

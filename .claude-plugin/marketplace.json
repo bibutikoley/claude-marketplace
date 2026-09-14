@@ -10,7 +10,7 @@
       "name": "mobile-mcp",
       "source": "./plugins/mobile-mcp",
       "description": "Unified MCP server for Android (ADB) and iOS (Xcode simctl/devicectl) device control",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "author": {
         "name": "Bibuti Koley",
         "email": "bibutikoley@outlook.com"
@@ -20,7 +20,7 @@
       "name": "apple-notes-mcp",
       "source": "./plugins/apple-notes-mcp",
       "description": "MCP server giving Claude Code CRUD access to Apple Notes via AppleScript",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "author": {
         "name": "Bibuti Koley",
         "email": "bibutikoley@outlook.com"
