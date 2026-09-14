@@ -25,7 +25,7 @@ Windsurf, Cline, Roo Code, Codex CLI, Gemini CLI, opencode — see
 - **mobile-mcp (iOS):** macOS with Xcode 15+ (`xcrun simctl` for Simulators, `xcrun devicectl` for physical iOS 17+ devices)
 
 > [!NOTE]
-> By default `apple-notes` has access to **all** your Apple Notes.
+> By default `apple-notes-mcp` has access to **all** your Apple Notes.
 > Set `APPLE_NOTES_MCP_ALLOWED_FOLDERS` (comma-separated folder names or full
 > paths) in the server's environment to restrict it to specific folders — see
 > [`plugins/apple-notes-mcp/README.md`](plugins/apple-notes-mcp/README.md#access-scope).
@@ -128,9 +128,10 @@ or [`plugins/apple-notes-mcp/README.md`](plugins/apple-notes-mcp/README.md#other
 ## Versioning
 
 Single release train: `0.4.0` everywhere — `marketplace.json`, each
-plugin's `plugin.json` / `pyproject.toml`, the MCP server strings,
-`.mcp.json` server keys, and the pinned install URLs plus
-current-version prose in the READMEs and `site/index.html`. Releases are
+plugin's `plugin.json` / `pyproject.toml`, the MCP server versions
+(derived from `pyproject.toml` via installed package metadata at runtime,
+with a source-checkout fallback), `.mcp.json` server keys, and the pinned
+install URLs plus current-version prose in the READMEs and `site/index.html`. Releases are
 stamped with one command — `python3 scripts/bump_version.py <X.Y.Z>` —
 and checked by `scripts/validate_marketplace.py` (names, versions,
 descriptions, server strings, `.mcp.json` keys, pinned URLs/prose) plus

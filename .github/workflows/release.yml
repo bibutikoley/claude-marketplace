@@ -12,20 +12,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+
+      # Fail if the tag (vX.Y.Z) does not exactly match the repository's
+      # release version (marketplace.json, plugin.json, pyproject.toml,
+      # MCP runtime versions) or the changelog section is missing.
+      - name: Validate tag matches repository versions
+        run: python3 scripts/validate_release.py "${GITHUB_REF_NAME}"
+
+      - name: Validate marketplace
+        run: python3 scripts/validate_marketplace.py
+
+      # Fail if any test fails. Single entry point so CI and releases can
+      # never drift apart (verify.sh also re-runs marketplace validation).
+      - name: Verify repository
+        run: ./scripts/verify.sh
+
+      # Fail if the corresponding changelog section is missing or empty.
+      # Never publish a release with generic/empty notes.
       - name: Extract CHANGELOG section
-        id: notes
         run: |
-          awk -v ver="## ${GITHUB_REF_NAME}" '
-            $0 == ver { capture=1; next }
-            /^## / && capture { exit }
-            capture { print }
-          ' CHANGELOG.md > /tmp/release-notes.md
-          if [ ! -s /tmp/release-notes.md ]; then
-            echo "Release ${GITHUB_REF_NAME}" > /tmp/release-notes.md
-          fi
+          python3 scripts/validate_release.py "${GITHUB_REF_NAME}" --notes-file /tmp/release-notes.md
           cat /tmp/release-notes.md
+          test -s /tmp/release-notes.md
 
       - name: Create GitHub release
         run: gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --notes-file /tmp/release-notes.md

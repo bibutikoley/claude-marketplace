@@ -8,6 +8,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import notes
+import main
 
 
 def with_scope(*entries):
@@ -171,6 +172,24 @@ class TestCanonicalScope(unittest.TestCase):
                 "CallToolResult",
                 f"tool {fn.name} must be annotated -> CallToolResult",
             )
+
+    def test_destructive_mutations_require_server_side_confirm(self):
+        cases = [
+            (main.update_note, {"note_id": "n1", "content": "replacement"}, "update_note"),
+            (main.delete_note, {"note_id": "n1"}, "delete_note"),
+            (main.delete_folder, {"name": "iCloud/Work"}, "delete_folder"),
+        ]
+        for tool, kwargs, attr in cases:
+            with self.subTest(tool=tool.__name__):
+                with patch.object(notes, attr, return_value={"name": "x", "id": "1"}) as mocked:
+                    denied = tool(**kwargs)
+                    self.assertTrue(denied.is_error)
+                    self.assertTrue(denied.structured_content["confirm_required"])
+                    mocked.assert_not_called()
+
+                    allowed = tool(**kwargs, confirm=True)
+                    self.assertFalse(allowed.is_error)
+                    mocked.assert_called_once()
 
 
 if __name__ == "__main__":

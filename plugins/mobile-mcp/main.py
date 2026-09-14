@@ -14,6 +14,9 @@ from __future__ import annotations
 
 import base64
 import json
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _dist_version
+from pathlib import Path
 
 from mcp.server.mcpserver import MCPServer
 from mcp.types import CallToolResult, ImageContent, TextContent
@@ -21,7 +24,34 @@ from mcp.types import CallToolResult, ImageContent, TextContent
 import android
 import ios
 
-mcp = MCPServer("mobile-mcp", version="0.4.0")
+
+def _package_version() -> str:
+    """Single source of truth: ``pyproject.toml`` ``version``.
+
+    Resolved via installed package metadata when the distribution is
+    installed (``uvx`` / ``uv run --project``), with a source-checkout
+    fallback that parses the sibling ``pyproject.toml`` so ``python
+    main.py`` from a clone reports the same version.
+    """
+    dist_name = "mobile-mcp"
+    try:
+        return _dist_version(dist_name)
+    except PackageNotFoundError:
+        pass
+    pyproject = Path(__file__).resolve().parent / "pyproject.toml"
+    try:
+        import tomllib
+
+        with open(pyproject, "rb") as f:
+            data = tomllib.load(f)
+        return str(data["project"]["version"])
+    except Exception as e:
+        raise RuntimeError(
+            f"cannot determine {dist_name} version: not installed and {pyproject} unreadable ({e})"
+        ) from e
+
+
+mcp = MCPServer("mobile-mcp", version=_package_version())
 
 
 def _ok(text: str, **extra) -> CallToolResult:
@@ -906,7 +936,8 @@ def ios_install_app(
     udid: str | None = None,
     device_type: str = "simulator",
 ) -> CallToolResult:
-    """Install .app bundle (Simulator) or .ipa/.app (device)."""
+    """Install .app bundle (Simulator) or .ipa/.app (device). Host path must be
+    under IOS_ALLOWED_INSTALL_DIRS (deny-by-default; symlinks rejected)."""
     try:
         if device_type.lower() == "device":
             if not udid:

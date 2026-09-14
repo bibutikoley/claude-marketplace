@@ -637,7 +637,15 @@ def delete_file(device_path: str, serial: str | None = None) -> str:
     if not norm.startswith("/"):
         raise AdbError(f"Device path must be absolute: '{device_path}'.")
     for root in _PROTECTED_DELETE_ROOTS:
-        if norm == root or norm.startswith(root.rstrip("/") + "/"):
+        if norm == root:
+            raise AdbError(
+                f"Refusing to delete protected path '{device_path}'. "
+                "Delete a specific file under /sdcard or the app sandbox."
+            )
+        # "/" itself is exact-match only: its "/" prefix would otherwise
+        # match every absolute path (including /sdcard, which the error
+        # message itself recommends).
+        if root != "/" and norm.startswith(root.rstrip("/") + "/"):
             raise AdbError(
                 f"Refusing to delete protected path '{device_path}'. "
                 "Delete a specific file under /sdcard or the app sandbox."

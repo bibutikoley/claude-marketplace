@@ -24,13 +24,13 @@ client that supports stdio MCP servers.
 | `list_notes` | Notes by id/title/folder/modified; filter by folder or date, limit |
 | `get_note` | Full note: HTML body, plaintext, Markdown (default), folder, created/modified, id |
 | `create_note` | Create with title + Markdown (default) or plaintext body, optionally in a folder path |
-| `update_note` | Replace entire body (Markdown by default); first heading/line becomes the new title (Notes semantics) |
+| `update_note` | Replace entire body (Markdown by default); first heading/line becomes the new title; destructive, requires `confirm=true` |
 | `append_note` | Append/prepend Markdown (default) or plaintext without replacing existing content |
-| `delete_note` | Delete (moves to **Recently Deleted** — note stays resolvable there) |
+| `delete_note` | Delete (moves to **Recently Deleted** — note stays resolvable there); requires `confirm=true` |
 | `search_notes` | Case-insensitive substring search on titles, or bodies (`search_content`) |
 | `list_folders` | All folders as `Account/Folder/Subfolder` paths |
 | `create_folder` | Create folder at default account root (idempotent) |
-| `delete_folder` | Delete an empty folder; bare name or full path |
+| `delete_folder` | Delete an empty folder; bare name or full path; requires `confirm=true` |
 | `health_check` | Reachability + automation permission diagnostics |
 
 ## Install
@@ -306,12 +306,12 @@ What the server enforces vs what it does not:
   `json.dumps`, so note titles/bodies cannot break out of the script
   string context; serialized Apple Events (one scripting client at a
   time — concurrent calls queue rather than corrupt).
-- **Not gated**: `update_note` (full overwrite), `append_note`, and
-  `delete_note` act immediately with no confirmation step — your safety
-  net is the MCP client's tool-approval flow. Note that deletes are
-  soft (notes land in Recently Deleted and stay listable until purged
-  manually in Notes.app), while overwrites are not recoverable from the
-  server side.
+- **Confirmation gates**: `update_note` (full overwrite), `delete_note`,
+  and `delete_folder` require `confirm=true` after user approval. The
+  check lives in the server, not the prompt; without it the operation does
+  not execute. `append_note` acts immediately. Note that deletes are soft
+  (notes land in Recently Deleted and stay listable until purged manually
+  in Notes.app), while overwrites are not recoverable from the server side.
 - **OS permission**: the only system access needed is the macOS
   Automation grant for controlling Notes.app — no Full Disk Access, no
   network, no database. Notes.app itself remains the source of truth;

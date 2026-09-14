@@ -28,6 +28,8 @@ logger = logging.getLogger("mobile-mcp.ios")
 _COMMAND_LOCK = threading.Lock()
 _LAST_SCREENSHOT_PATH: str | None = None
 _LAST_LAYOUT_ELEMENTS: list[dict[str, Any]] = []
+_BUNDLE_ID_RE = re.compile(r"[A-Za-z0-9._-]+")
+_URL_RE = re.compile(r"[A-Za-z0-9+.-]+://\S+")
 
 # macOS CoreGraphics bindings
 _cg_lib = None
@@ -72,6 +74,68 @@ class IosError(RuntimeError):
     """Raised when an iOS command fails or prerequisites are missing."""
 
     pass
+
+
+def _require_bundle_id(bundle_id: str) -> None:
+    """Reject bundle IDs that could alter a downstream command argument."""
+    if not _BUNDLE_ID_RE.fullmatch(bundle_id or ""):
+        raise IosError(f"Invalid bundle ID: {bundle_id}")
+
+
+# ---- Host filesystem authorization (install allowlist) -------------------
+# IOS_ALLOWED_INSTALL_DIRS restricts which host paths may be installed on
+# simulators/devices. Deny-by-default: when unset or empty, every install
+# is refused. Multiple roots separated by os.pathsep, `~` expanded, all
+# entries resolved before comparison. Mirrors Android's
+# ANDROID_ADB_ALLOWED_INSTALL_DIRS model, except the iOS default is empty
+# (deny) rather than /tmp/.
+#
+# Symlink policy: symlinks are REJECTED outright (even when the target
+# sits inside an allowed directory), matching Android's install_apk. The
+# caller must pass the real path. Resolved paths are then authorized, so
+# symlink escapes through allowed parents cannot smuggle outside paths in.
+
+
+def allowed_install_dirs() -> list[Path]:
+    """Allowed host install roots from IOS_ALLOWED_INSTALL_DIRS."""
+    raw = os.environ.get("IOS_ALLOWED_INSTALL_DIRS", "")
+    dirs: list[Path] = []
+    for part in raw.split(os.pathsep):
+        part = part.strip()
+        if not part:
+            continue
+        dirs.append(Path(part).expanduser().resolve())
+    return dirs
+
+
+def validate_install_path(path: str) -> Path:
+    """Normalize and authorize a host app path for installation.
+
+    Returns the resolved absolute path. Raises IosError when the
+    allowlist is empty, the path is a symlink, or the resolved path is
+    not inside an allowed directory.
+    """
+    if not path or not path.strip():
+        raise IosError("No app path provided.")
+    allowed = allowed_install_dirs()
+    if not allowed:
+        raise IosError(
+            "App installation is disabled: set IOS_ALLOWED_INSTALL_DIRS to a "
+            f"{os.pathsep!r}-separated list of allowed directories "
+            '(e.g. "$HOME/Developer/apps").'
+        )
+    raw = path.strip()
+    p = Path(raw).expanduser()
+    if p.is_symlink():
+        raise IosError(f"Refusing symlinked app path: {path}")
+    resolved = p.resolve()
+    if not any(resolved == d or (d.is_dir() and resolved.is_relative_to(d)) for d in allowed):
+        names = os.pathsep.join(str(d) for d in allowed)
+        raise IosError(
+            f"App outside allowed install dirs ({names}): {path}. "
+            "Set IOS_ALLOWED_INSTALL_DIRS to include it."
+        )
+    return resolved
 
 
 # ---- Developer directory & tool discovery -----------------------------------
@@ -399,12 +463,16 @@ def erase_simulator(udid_or_name: str | None = None) -> str:
 
 
 def install_app_simulator(app_path: str, udid: str | None = None) -> str:
-    """Install an .app bundle or test runner on simulator."""
+    """Install an .app bundle on simulator.
+
+    The host path must live under IOS_ALLOWED_INSTALL_DIRS
+    (deny-by-default; symlinks rejected). Safe argv execution, no shell.
+    """
     target_udid = resolve_simulator(udid)
-    p = Path(app_path).expanduser().resolve()
+    p = validate_install_path(app_path)
     if not p.exists():
         raise IosError(f"App path does not exist: {app_path}")
-    if not p.is_dir() and not p.suffix == ".app":
+    if p.suffix != ".app" or not p.is_dir():
         raise IosError(f"Expected an .app bundle directory, got {app_path}")
 
     _run_simctl(["install", target_udid, str(p)], timeout=60.0)
@@ -413,8 +481,7 @@ def install_app_simulator(app_path: str, udid: str | None = None) -> str:
 
 def uninstall_app_simulator(bundle_id: str, udid: str | None = None) -> str:
     """Uninstall an app by bundle ID from simulator."""
-    if not re.match(r"^[a-zA-Z0-9.\-_]+$", bundle_id):
-        raise IosError(f"Invalid bundle ID: {bundle_id}")
+    _require_bundle_id(bundle_id)
     target_udid = resolve_simulator(udid)
     _run_simctl(["uninstall", target_udid, bundle_id], timeout=30.0)
     return f"Uninstalled {bundle_id} from simulator {target_udid}."
@@ -426,8 +493,7 @@ def launch_app_simulator(
     udid: str | None = None,
 ) -> str:
     """Launch an installed application on simulator."""
-    if not re.match(r"^[a-zA-Z0-9.\-_]+$", bundle_id):
-        raise IosError(f"Invalid bundle ID: {bundle_id}")
+    _require_bundle_id(bundle_id)
     target_udid = resolve_simulator(udid)
     cmd = ["launch", target_udid, bundle_id]
     if args:
@@ -438,8 +504,7 @@ def launch_app_simulator(
 
 def terminate_app_simulator(bundle_id: str, udid: str | None = None) -> str:
     """Terminate an application process on simulator."""
-    if not re.match(r"^[a-zA-Z0-9.\-_]+$", bundle_id):
-        raise IosError(f"Invalid bundle ID: {bundle_id}")
+    _require_bundle_id(bundle_id)
     target_udid = resolve_simulator(udid)
     _run_simctl(["terminate", target_udid, bundle_id], timeout=15.0)
     return f"Terminated {bundle_id} on {target_udid}."
@@ -488,8 +553,7 @@ def get_app_container(
     udid: str | None = None,
 ) -> str:
     """Get the container path ('app', 'data', 'groups') for an installed app."""
-    if not re.match(r"^[a-zA-Z0-9.\-_]+$", bundle_id):
-        raise IosError(f"Invalid bundle ID: {bundle_id}")
+    _require_bundle_id(bundle_id)
     if container_type not in ["app", "data", "groups"]:
         raise IosError(f"container_type must be 'app', 'data', or 'groups', got '{container_type}'")
 
@@ -504,7 +568,7 @@ def get_app_container(
 def open_url_simulator(url: str, udid: str | None = None) -> str:
     """Open URL or deep link in simulator."""
     target_udid = resolve_simulator(udid)
-    if not re.match(r"^[a-zA-Z0-9+.-]+://\S+$", url):
+    if not _URL_RE.fullmatch(url):
         raise IosError(f"Invalid URL format: {url}")
     _run_simctl(["openurl", target_udid, url], timeout=15.0)
     return f"Dispatched {url} to simulator {target_udid}."
@@ -530,8 +594,7 @@ def send_push_notification(
     udid: str | None = None,
 ) -> str:
     """Send simulated APNs push notification to an app."""
-    if not re.match(r"^[a-zA-Z0-9.\-_]+$", bundle_id):
-        raise IosError(f"Invalid bundle ID: {bundle_id}")
+    _require_bundle_id(bundle_id)
     target_udid = resolve_simulator(udid)
 
     if isinstance(payload, str):
@@ -613,8 +676,7 @@ def set_permission(
         raise IosError(f"Invalid service '{service}'. Valid: {', '.join(valid_services)}")
     if action not in valid_actions:
         raise IosError(f"Invalid action '{action}'. Valid: {', '.join(valid_actions)}")
-    if not re.match(r"^[a-zA-Z0-9.\-_]+$", bundle_id):
-        raise IosError(f"Invalid bundle ID: {bundle_id}")
+    _require_bundle_id(bundle_id)
 
     target_udid = resolve_simulator(udid)
     _run_simctl(
@@ -1141,10 +1203,16 @@ def device_info_physical(device_uuid: str) -> dict[str, Any]:
 
 
 def install_app_device(device_uuid: str, app_path: str) -> str:
-    """Install an app (.ipa or .app) on physical device via devicectl."""
-    p = Path(app_path).expanduser().resolve()
+    """Install an app (.ipa or .app) on physical device via devicectl.
+
+    The host path must live under IOS_ALLOWED_INSTALL_DIRS
+    (deny-by-default; symlinks rejected). Safe argv execution, no shell.
+    """
+    p = validate_install_path(app_path)
     if not p.exists():
         raise IosError(f"App path does not exist: {app_path}")
+    if p.suffix not in (".ipa", ".app"):
+        raise IosError(f"Expected a .ipa or .app bundle, got {app_path}")
     _run_devicectl(
         ["device", "install", "app", "--device", device_uuid, str(p)],
         timeout=120.0,
@@ -1154,8 +1222,7 @@ def install_app_device(device_uuid: str, app_path: str) -> str:
 
 def uninstall_app_device(device_uuid: str, bundle_id: str) -> str:
     """Uninstall an app from physical device via devicectl."""
-    if not re.match(r"^[a-zA-Z0-9.\-_]+$", bundle_id):
-        raise IosError(f"Invalid bundle ID: {bundle_id}")
+    _require_bundle_id(bundle_id)
     _run_devicectl(
         ["device", "uninstall", "app", "--device", device_uuid, bundle_id],
         timeout=60.0,
@@ -1169,8 +1236,7 @@ def launch_app_device(
     args: list[str] | None = None,
 ) -> str:
     """Launch process on physical device via devicectl."""
-    if not re.match(r"^[a-zA-Z0-9.\-_]+$", bundle_id):
-        raise IosError(f"Invalid bundle ID: {bundle_id}")
+    _require_bundle_id(bundle_id)
     cmd = ["device", "process", "launch", "--device", device_uuid, bundle_id]
     if args:
         cmd.extend(args)
@@ -1180,8 +1246,7 @@ def launch_app_device(
 
 def terminate_app_device(device_uuid: str, bundle_id: str) -> str:
     """Terminate app process on physical device via devicectl."""
-    if not re.match(r"^[a-zA-Z0-9.\-_]+$", bundle_id):
-        raise IosError(f"Invalid bundle ID: {bundle_id}")
+    _require_bundle_id(bundle_id)
     out = _run_devicectl(
         ["device", "process", "terminate", "--device", device_uuid, bundle_id],
         timeout=20.0,

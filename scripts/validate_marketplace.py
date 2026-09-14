@@ -41,6 +41,10 @@ REQUIRED_PLUGIN_FILES = [
 ]
 
 MCP_SERVER_RE = re.compile(r'MCPServer\("([^"]+)", version="([^"]+)"\)')
+MCP_SERVER_NAME_RE = re.compile(r'MCPServer\("([^"]+)"')
+MCP_SERVER_DYNAMIC_RE = re.compile(
+    r'MCPServer\("([^"]+)",\s*version\s*=\s*_package_version\(\)\)'
+)
 PYPROJECT_NAME_RE = re.compile(r'(?m)^name\s*=\s*["\']([^"\']+)["\']')
 PYPROJECT_VERSION_RE = re.compile(r'(?m)^version\s*=\s*["\']([^"\']+)["\']')
 PYPROJECT_DESC_RE = re.compile(r'(?m)^description\s*=\s*["\']([^"\']+)["\']')
@@ -48,6 +52,7 @@ PINNED_URL_RE = re.compile(r"claude-marketplace@v(\d+\.\d+\.\d+)#subdirectory=")
 AT_VERSION_RE = re.compile(r"@v(\d+\.\d+\.\d+)")
 BACKTICK_VERSION_RE = re.compile(r"`@?v?(\d+\.\d+\.\d+)`")
 CODE_TAG_VERSION_RE = re.compile(r"<code>@?v(\d+\.\d+\.\d+)</code>")
+SPAN_VERSION_RE = re.compile(r'<span class="version">v(\d+\.\d+\.\d+)</span>')
 
 errors: list[str] = []
 warnings: list[str] = []
@@ -82,33 +87,91 @@ def pyproject_field(
         return None
     m = pattern.search(text)
     if not m:
-        warn(f"could not read {field} from {pyproject.relative_to(ROOT)}")
+        try:
+            rel = pyproject.relative_to(ROOT)
+        except ValueError:
+            # Release-validation tests intentionally operate on a temporary
+            # repository root; preserve a useful warning there as well.
+            rel = pyproject
+        warn(f"could not read {field} from {rel}")
         return None
     return m.group(1)
 
 
 def main_py_server(main_py: Path) -> tuple[str | None, str | None]:
-    """Return (server_name, version) from the MCPServer(...) call."""
+    """Return (server_name, version) from the MCPServer(...) call.
+
+    Supports two shapes:
+    - legacy literal: ``MCPServer("name", version="X.Y.Z")`` → returns X.Y.Z.
+    - dynamic single-source: ``MCPServer("name",
+      version=_package_version())`` with an ``importlib.metadata``-backed
+      ``_package_version()`` that resolves ``pyproject.toml`` ``version``.
+      Returns the sibling ``pyproject.toml`` version, which is what the
+      runtime resolves to once installed (source-checkout fallback reads
+      the same file). A mismatched distribution name or a missing
+      derivation is a hard failure so runtime/package drift cannot recur
+      silently.
+    """
     try:
         text = main_py.read_text(encoding="utf-8")
     except FileNotFoundError:
         return None, None
     m = MCP_SERVER_RE.search(text)
-    if not m:
-        fail(f"{main_py.relative_to(ROOT)}: no MCPServer(name, version=...) found")
-        return None, None
-    return m.group(1), m.group(2)
+    if m:
+        return m.group(1), m.group(2)
+    m_dyn = MCP_SERVER_DYNAMIC_RE.search(text)
+    if not m_dyn:
+        m_name = MCP_SERVER_NAME_RE.search(text)
+        if not m_name:
+            fail(f"{main_py.relative_to(ROOT)}: no MCPServer(name, version=...) found")
+            return None, None
+        fail(
+            f"{main_py.relative_to(ROOT)}: MCPServer version must be a "
+            '"X.Y.Z" literal or version=_package_version() '
+            "(single source of truth via importlib.metadata)"
+        )
+        return m_name.group(1), None
+    name = m_dyn.group(1)
+    if "importlib.metadata" not in text or "_package_version" not in text:
+        fail(
+            f"{main_py.relative_to(ROOT)}: dynamic MCPServer version "
+            "requires an importlib.metadata-backed _package_version()"
+        )
+        return name, None
+    m_dist = re.search(r'dist_name\s*=\s*["\']([^"\']+)["\']', text)
+    if not m_dist:
+        fail(
+            f"{main_py.relative_to(ROOT)}: _package_version() must define "
+            'dist_name = "<plugin>"'
+        )
+        return name, None
+    if m_dist.group(1) != name:
+        fail(
+            f"{main_py.relative_to(ROOT)}: _package_version() dist_name "
+            f"'{m_dist.group(1)}' != MCPServer name '{name}'"
+        )
+        return name, None
+    pyproject = main_py.parent / "pyproject.toml"
+    py_version = pyproject_field(pyproject, PYPROJECT_VERSION_RE, "version")
+    if py_version is None:
+        fail(
+            f"{main_py.relative_to(ROOT)}: dynamic version cannot be resolved "
+            "(sibling pyproject.toml has no version)"
+        )
+        return name, None
+    return name, py_version
 
 
 def doc_drift_versions(text: str) -> list[str]:
     """Every current-version mention in a living doc, excluding history.
 
     Covers @vX.Y.Z pins (URLs + prose), backticked `vX.Y.Z` / `X.Y.Z`
-    prose, and <code>vX.Y.Z</code> labels. Lines with "Removed in" are
-    history prose and are skipped.
+    prose, <code>vX.Y.Z</code> labels, and <span class="version"> badges.
+    Lines with "Removed in" are history prose and are skipped.
     """
     found: list[str] = []
     found.extend(AT_VERSION_RE.findall(text))
+    found.extend(SPAN_VERSION_RE.findall(text))
     for line in text.splitlines():
         if "Removed in" in line:
             continue

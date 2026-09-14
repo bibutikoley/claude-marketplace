@@ -35,6 +35,7 @@ PINNED_URL_RE = r"claude-marketplace@v\d+\.\d+\.\d+#subdirectory="
 # @vX.Y.Z contain no digits and never match.
 PROSE_AT_VERSION_RE = r"(?<!claude-marketplace)@v\d+\.\d+\.\d+"
 PROSE_CODE_TAG_RE = r"(<code>)v\d+\.\d+\.\d+(</code>)"
+PROSE_SPAN_TAG_RE = r'(<span class="version">)v\d+\.\d+\.\d+(</span>)'
 
 
 def sub_version_json(path: Path, expect: int, version: str) -> bool:
@@ -85,6 +86,11 @@ def bump_doc_text(text: str, version: str) -> tuple[str, dict[str, int]]:
     )
     text, counts["code_tags"] = re.subn(
         PROSE_CODE_TAG_RE,
+        rf"\g<1>v{version}\g<2>",
+        text,
+    )
+    text, counts["version_badges"] = re.subn(
+        PROSE_SPAN_TAG_RE,
         rf"\g<1>v{version}\g<2>",
         text,
     )
@@ -146,12 +152,24 @@ def main(argv: list[str]) -> int:
             f'version = "{version}"',
             1,
         )
-        ok &= sub_exact(
-            pdir / "main.py",
-            r'MCPServer\("([^"]+)", version="\d+\.\d+\.\d+"\)',
-            rf'MCPServer("\1", version="{version}")',
-            1,
-        )
+        # MCP runtime version is single-sourced from pyproject.toml via an
+        # importlib.metadata-backed _package_version() in main.py. Legacy
+        # checkouts may still carry a literal MCPServer(..., version="X").
+        main_py = pdir / "main.py"
+        main_text = main_py.read_text(encoding="utf-8")
+        if "version=_package_version()" in main_text:
+            if f'dist_name = "{plugin}"' not in main_text:
+                print(f"ERROR: {main_py.relative_to(ROOT)}: dynamic version mismatch")
+                ok = False
+            else:
+                print(f"OK: {main_py.relative_to(ROOT)} (dynamic, from pyproject)")
+        else:
+            ok &= sub_exact(
+                main_py,
+                r'MCPServer\("([^"]+)", version="\d+\.\d+\.\d+"\)',
+                rf'MCPServer("\1", version="{version}")',
+                1,
+            )
 
     # Pinned install URLs + current-version prose in the living docs.
     for path in DOC_FILES:

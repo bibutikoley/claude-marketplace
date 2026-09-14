@@ -1,24 +1,76 @@
 """MCP server: Apple Notes CRUD for Claude Code.
 
 Run:  uv run main.py
-Register:  claude mcp add apple-notes -s user -- uv run --project <this dir> main.py
+Register:  claude mcp add apple-notes-mcp -s user -- uv run --project <this dir> main.py
 
 First tool call makes macOS show an Automation prompt (control Notes) — click OK.
 """
 
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _dist_version
+from pathlib import Path
+
 from mcp.server.mcpserver import MCPServer
 from mcp.types import CallToolResult, TextContent
 
 import notes
 
-mcp = MCPServer("apple-notes-mcp", version="0.4.0")
+
+def _package_version() -> str:
+    """Single source of truth: ``pyproject.toml`` ``version``.
+
+    Resolved via installed package metadata when the distribution is
+    installed (``uvx`` / ``uv run --project``), with a source-checkout
+    fallback that parses the sibling ``pyproject.toml`` so ``python
+    main.py`` from a clone reports the same version.
+    """
+    dist_name = "apple-notes-mcp"
+    try:
+        return _dist_version(dist_name)
+    except PackageNotFoundError:
+        pass
+    pyproject = Path(__file__).resolve().parent / "pyproject.toml"
+    try:
+        import tomllib
+
+        with open(pyproject, "rb") as f:
+            data = tomllib.load(f)
+        return str(data["project"]["version"])
+    except Exception as e:
+        raise RuntimeError(
+            f"cannot determine {dist_name} version: not installed and {pyproject} unreadable ({e})"
+        ) from e
+
+
+mcp = MCPServer("apple-notes-mcp", version=_package_version())
 
 
 def _ok(text: str, **extra) -> CallToolResult:
     """Tool result: human-readable text + machine-readable structured fields."""
     return CallToolResult(content=[TextContent(type="text", text=text)], structured_content=extra)
+
+
+def _err(text: str, **extra) -> CallToolResult:
+    """Tool error with a server-enforced structured confirmation signal."""
+    return CallToolResult(
+        content=[TextContent(type="text", text=text)],
+        is_error=True,
+        structured_content=extra if extra else None,
+    )
+
+
+def _require_confirm(confirm: bool, op: str) -> CallToolResult | None:
+    """Server-side guard for irreversible Notes mutations."""
+    if not confirm:
+        return _err(
+            f"{op} can permanently change Notes data. "
+            "Re-invoke with confirm=true after user approval.",
+            operation=op,
+            confirm_required=True,
+        )
+    return None
 
 
 @mcp.tool()
@@ -113,11 +165,19 @@ def create_note(
 
 
 @mcp.tool()
-def update_note(note_id: str, content: str, format: str = "markdown") -> CallToolResult:
+def update_note(
+    note_id: str,
+    content: str,
+    format: str = "markdown",
+    confirm: bool = False,
+) -> CallToolResult:
     """Replace a note's entire body. `content` is Markdown by default
     (format="markdown"); its first heading/line becomes the new title
     (Notes.app behavior). Use format="plaintext" for plain text. Use get_note
-    first to see the current body — this call overwrites it."""
+    first to see the current body — this call overwrites it and requires
+    confirm=true after user approval."""
+    if (denied := _require_confirm(confirm, "update_note")) is not None:
+        return denied
     try:
         result = notes.update_note(note_id, content, format=format)
         return _ok(f"Updated note '{result['name']}' [id: {result['id']}]", **result)
@@ -140,9 +200,11 @@ def append_note(
 
 
 @mcp.tool()
-def delete_note(note_id: str) -> CallToolResult:
+def delete_note(note_id: str, confirm: bool = False) -> CallToolResult:
     """Delete a note (moves it to Recently Deleted). Irreversible from the
-    agent's side — confirm the exact id with get_note/list_notes first."""
+    agent's side — requires confirm=true after user approval."""
+    if (denied := _require_confirm(confirm, "delete_note")) is not None:
+        return denied
     try:
         notes.delete_note(note_id)
         return _ok(f"Deleted note [id: {note_id}]")
@@ -176,9 +238,11 @@ def create_folder(name: str) -> CallToolResult:
 
 
 @mcp.tool()
-def delete_folder(name: str) -> CallToolResult:
+def delete_folder(name: str, confirm: bool = False) -> CallToolResult:
     """Delete a folder by name. Refuses if Notes.app refuses (a folder holding
-    notes cannot be deleted this way). Irreversible — verify with list_folders."""
+    notes cannot be deleted this way). Requires confirm=true after user approval."""
+    if (denied := _require_confirm(confirm, "delete_folder")) is not None:
+        return denied
     try:
         notes.delete_folder(name)
         return _ok(f"Deleted folder '{name}'")

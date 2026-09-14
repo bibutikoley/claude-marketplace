@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Plugin marketplace for AI coding agents. Install superpowers with one command — featuring mobile-mcp (cross-platform Android & iOS device automation) and apple-notes (Apple Notes CRUD on macOS) via MCP." />
+    <meta name="description" content="Plugin marketplace for AI coding agents. Install superpowers with one command — featuring mobile-mcp (cross-platform Android & iOS device automation) and apple-notes-mcp (Apple Notes CRUD on macOS) via MCP." />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <title>claude-marketplace — Plugin marketplace for AI agents</title>
     <link rel="stylesheet" href="/src/style.css" />
@@ -83,7 +83,7 @@
           <article class="card">
             <div class="card-head">
               <h3>mobile-mcp</h3>
-              <span class="version">v0.1.0</span>
+              <span class="version">v0.4.0</span>
               <span class="platform-tag">Android &amp; iOS</span>
             </div>
             <p>
@@ -107,17 +107,17 @@
               <li>screenshot</li>
               <li>tap</li>
               <li>swipe</li>
-              <li>launch_app</li>
-              <li>press_back</li>
-              <li>open_url</li>
-              <li>+64 more</li>
+               <li>launch_app</li>
+               <li>key_event</li>
+               <li>open_url</li>
+               <li>+49 more</li>
             </ul>
             <p class="card-link"><a href="https://github.com/bibutikoley/claude-marketplace/tree/main/plugins/mobile-mcp" target="_blank" rel="noopener noreferrer">View mobile-mcp docs &amp; tools guide &rarr;</a></p>
           </article>
           <article class="card">
             <div class="card-head">
               <h3>apple-notes-mcp</h3>
-              <span class="version">v0.1.0</span>
+              <span class="version">v0.4.0</span>
               <span class="platform-tag">macOS</span>
             </div>
             <p>
@@ -139,7 +139,7 @@
               <li>delete_folder</li>
               <li>health_check</li>
             </ul>
-            <p class="card-link"><a href="https://github.com/bibutikoley/claude-marketplace/tree/main/plugins/apple-notes-mcp" target="_blank" rel="noopener noreferrer">View apple-notes docs &amp; guide &rarr;</a></p>
+            <p class="card-link"><a href="https://github.com/bibutikoley/claude-marketplace/tree/main/plugins/apple-notes-mcp" target="_blank" rel="noopener noreferrer">View apple-notes-mcp docs &amp; guide &rarr;</a></p>
           </article>
           <article class="card card-ghost" aria-label="More plugins coming soon">
             <div class="card-head">
@@ -202,7 +202,7 @@ Entry values (default, no clone needed):
 
 If I say I have a local clone of bibutikoley/claude-marketplace, use it instead: replace the --from value with the absolute path to its plugins/mobile-mcp or plugins/apple-notes-mcp directory (absolute path only, never relative).
 
-For apple-notes, if I give you a folder allowlist, add env {"APPLE_NOTES_MCP_ALLOWED_FOLDERS": "the comma-separated list I gave you"} to the entry — except opencode, where the key is "environment" (not "env").
+For apple-notes-mcp, if I give you a folder allowlist, add env {"APPLE_NOTES_MCP_ALLOWED_FOLDERS": "the comma-separated list I gave you"} to the entry — except opencode, where the key is "environment" (not "env").
 
 Step 4 — Validate. Re-read the file and prove it still parses: for a JSON file run python3 -m json.tool with the file as its argument; for a TOML file run python3 -c "import tomllib,sys; tomllib.load(open(sys.argv[1],'rb'))" with the file path as its argument. Show me the entries you added.
 

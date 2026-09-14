@@ -6,74 +6,25 @@ on:
   pull_request:
 
 jobs:
-  validate-marketplace:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
 
-      # Discovered via find (not a hardcoded list) so new plugins and
-      # manifests are validated automatically.
-      - name: Validate marketplace manifests
-        run: |
-          files=$(find .claude-plugin plugins -name '*.json' -not -path '*/.venv/*' -not -path '*/node_modules/*' -not -path '*.egg-info/*' -not -path '*/build/*' -not -path '*/__pycache__/*' -not -path '*/.mypy_cache/*' -not -path '*/.ruff_cache/*' | sort)
-          echo "$files"
-          test -n "$files"
-          for f in $files; do
-            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))" && echo "OK: $f"
-          done
-
-      - name: Validate marketplace catalog
-        run: python3 scripts/validate_marketplace.py
-
-      # compileall covers every current and future module — no file list to rot.
-      - name: Compile plugins
-        run: python3 -m compileall -q plugins scripts tests
-
-      # Locks are the reproducible install; --locked fails if a lock is stale.
-      - name: Verify reproducible locks
-        run: |
-          uv sync --locked --project plugins/mobile-mcp
-          uv sync --locked --project plugins/apple-notes-mcp
-
-      # Runtime deps come from the locks (matches the README's
-      # `uv sync --project plugins/<name>` claim); pytest is provided
-      # ephemerally so it never leaks into the locks.
-      - name: Run plugin tests
-        run: |
-          uv run --project plugins/mobile-mcp --with pytest -- python -m pytest plugins/mobile-mcp/tests -q
-          uv run --project plugins/apple-notes-mcp --with pytest -- python -m pytest plugins/apple-notes-mcp/tests -q
-
-      - name: Run release-system tests
-        run: uv run --with pytest -- python -m pytest tests -q
-
-      - name: Install lint deps
-        run: pip install ruff==0.14.5
-
-      - name: Ruff check
-        run: ruff check plugins/mobile-mcp plugins/apple-notes-mcp scripts tests
-
-      - name: Ruff format check
-        run: ruff format --check plugins/mobile-mcp plugins/apple-notes-mcp scripts tests
-
-      # Top-level modules discovered via find so new modules are type-checked
-      # automatically (tests/ excluded: untyped test code). mypy runs inside
-      # the plugin's locked env so imports resolve exactly as shipped.
-      - name: Mypy mobile-mcp
-        run: uv run --project "$GITHUB_WORKSPACE/plugins/mobile-mcp" --with "mypy==1.18.1" -- python -m mypy $(find . -maxdepth 1 -name '*.py' | sort)
-        working-directory: plugins/mobile-mcp
-
-      - name: Mypy apple-notes
-        run: uv run --project "$GITHUB_WORKSPACE/plugins/apple-notes-mcp" --with "mypy==1.18.1" -- python -m mypy $(find . -maxdepth 1 -name '*.py' | sort)
-        working-directory: plugins/apple-notes-mcp
+      # Single entry point for every Python-side gate (marketplace
+      # validation, reproducible locks, pytest suites, ruff, mypy).
+      # Run the same command locally: ./scripts/verify.sh
+      - name: Verify repository
+        run: ./scripts/verify.sh
 
   test-and-build:
     runs-on: ubuntu-latest
@@ -82,12 +33,12 @@ jobs:
         working-directory: site
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: site/package-lock.json
 

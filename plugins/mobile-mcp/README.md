@@ -22,8 +22,8 @@ Works out-of-the-box with any MCP-compliant client: **Claude Code**, **Claude De
    - [Claude Desktop](#claude-desktop)
    - [Cursor / VS Code](#cursor--vs-code)
 4. [Unified Diagnostics & Device Discovery](#unified-diagnostics--device-discovery)
-5. [Android Tool Reference (30 Tools)](#android-tool-reference)
-6. [iOS Tool Reference (26 Tools)](#ios-tool-reference)
+5. [Android Tool Reference (35 tools)](#android-tool-reference)
+6. [iOS Tool Reference (29 tools)](#ios-tool-reference)
    - [Simulator Lifecycle](#simulator-lifecycle)
    - [Simulator UI & Gesture Automation](#simulator-ui--gesture-automation)
    - [App Lifecycle & Deep Links](#app-lifecycle--deep-links)
@@ -372,12 +372,18 @@ leave your MCP client's tool-approval prompts on.
 4. **Constrained APK installs**: `install_apk` only accepts `.apk` paths
    under `ANDROID_ADB_ALLOWED_INSTALL_DIRS` (default `/tmp/`), rejects
    symlinks, and validates `--install-options` against a flag pattern.
-5. **Opt-in raw shell**: `run_shell` is disabled unless
+5. **Constrained iOS installs**: `ios_install_app` (simulator `.app`
+   bundles and device `.ipa`/`.app` files) is deny-by-default — every
+   install is refused unless the host path lives under
+   `IOS_ALLOWED_INSTALL_DIRS` (`os.pathsep`-separated roots, `~` expanded,
+   resolved before comparison). Symlinks are rejected outright, matching
+   `install_apk`.
+6. **Opt-in raw shell**: `run_shell` is disabled unless
    `ANDROID_ADB_ALLOW_SHELL=1`, and then only for commands listed in
    `ANDROID_ADB_ALLOWED_COMMANDS` (default: `ls,cat,echo,pwd,pm,am,
    dumpsys,getprop,input,screencap,screenrecord,logcat,ps,wm,settings,
    uiautomator,cmd`).
-6. **Input sanitization**: `key_event` accepts alphanumerics/underscores
+7. **Input sanitization**: `key_event` accepts alphanumerics/underscores
    only; `input_text` refuses shell metacharacters and non-ASCII;
    `open_url`, package names, bundle IDs, AVD names, and property names
    are all pattern-validated before touching the device.
@@ -385,7 +391,9 @@ leave your MCP client's tool-approval prompts on.
 ### What the server does NOT gate
 
 Everything else acts **immediately** once called: `tap`, `swipe`,
-`input_text`, `launch_app`, `force_stop`, `install_apk`, `push_file`,
+`input_text`, `launch_app`, `force_stop`, `install_apk` /
+`ios_install_app` (confined by their host install allowlists, but with no
+confirmation step), `push_file`,
 `pull_file`, permission/location/appearance changes, clipboard, and
 media import. There is no undo. Your safety net for these is the MCP
 client's own tool-approval flow — do not disable it for this server,

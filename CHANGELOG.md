@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+- Release hardening: `scripts/validate_release.py` verifies a `vX.Y.Z` tag
+  against `marketplace.json`, every `plugin.json` / `pyproject.toml`, the
+  MCP runtime versions, and a non-empty `## vX.Y.Z` changelog section.
+  `release.yml` now runs tag validation → marketplace validation → the
+  full `./scripts/verify.sh` suite → strict changelog extraction before
+  creating a GitHub release; generic/empty release notes are refused.
+- Single source of truth for MCP runtime versions: both servers derive
+  `MCPServer` `version` from installed package metadata
+  (`importlib.metadata`) with a `pyproject.toml` source-checkout fallback,
+  and `validate_marketplace.py` rejects runtime/package drift.
+- iOS host install allowlist: `ios_install_app` (simulator and device) is
+  deny-by-default without `IOS_ALLOWED_INSTALL_DIRS`
+  (`os.pathsep`-separated roots, `~` expanded, resolved before
+  authorization); symlinks rejected like Android `install_apk`, traversal
+  outside allowed roots refused.
+- `./scripts/verify.sh` centralizes every Python-side gate (marketplace
+  validation, `compileall`, locked `uv sync`, pytest suites, ruff, mypy);
+  CI calls it instead of duplicating command blocks. CI actions moved to
+  `checkout@v5` / `setup-python@v6` / `setup-node@v5` /
+  `setup-uv@v7` with Node 24 for the site build.
+- Attack-oriented regression tests: Android shell allowlist/quoting,
+  filesystem traversal and symlink rejection, iOS bundle-ID/URL/install
+  validation, and confirm-gating for every destructive mobile and Apple
+  Notes mutation (`update_note`, `delete_note`, `delete_folder`).
+- New `SECURITY.md` documenting the threat model and every control.
+- Fixed `delete_file` refusing `/sdcard` paths: the `/` protected root
+  prefix matched every absolute path; it is now exact-match only while all
+  system roots stay refused.
+
 ## v0.4.0
 
 - Rename `apple-notes` plugin and directory to `apple-notes-mcp`
