@@ -124,6 +124,7 @@ or [`plugins/apple-notes-mcp/README.md`](plugins/apple-notes-mcp/README.md#other
 | `plugins/mobile-mcp/` | The plugin (Unified Android + iOS mobile device automation) |
 | `plugins/mobile-mcp/README.md` | Tool reference, agent loop, and security model |
 | `site/` | Landing page (Vite + Three.js, deployed to GitHub Pages — see [site/README.md](site/README.md)) |
+| `CONTRIBUTING.md` | Dev setup, the single verify command, release train, adding a plugin |
 
 ## Versioning
 
