@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- iOS Vision OCR deduplicated: the Swift program embedded in `ios.py`
+  (`_SWIFT_OCR_CODE`) is now the single source; the never-packaged
+  duplicate `plugins/mobile-mcp/vision_ocr.swift` is removed.
+
 ## v0.5.0
 
 - Release hardening: `scripts/validate_release.py` verifies a `vX.Y.Z` tag

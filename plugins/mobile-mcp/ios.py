@@ -763,6 +763,9 @@ def take_screenshot_simulator(
     return png_bytes, str(dest_path)
 
 
+# Single source of truth for the Vision OCR helper; piped to `swift -` below
+# (a standalone .swift file would never reach built wheels, so it must live
+# inside this module).
 _SWIFT_OCR_CODE = """
 import Foundation
 import Vision
@@ -876,27 +879,16 @@ def get_layout_simulator(udid: str | None = None) -> list[dict[str, Any]]:
     target_udid = resolve_simulator(udid)
     _, shot_path = take_screenshot_simulator(target_udid)
 
-    swift_script = Path(__file__).resolve().parent / "vision_ocr.swift"
-
     with _COMMAND_LOCK:
         try:
-            if swift_script.exists():
-                proc = subprocess.run(
-                    ["swift", str(swift_script), shot_path],
-                    capture_output=True,
-                    text=True,
-                    timeout=20.0,
-                    check=False,
-                )
-            else:
-                proc = subprocess.run(
-                    ["swift", "-", shot_path],
-                    input=_SWIFT_OCR_CODE,
-                    capture_output=True,
-                    text=True,
-                    timeout=20.0,
-                    check=False,
-                )
+            proc = subprocess.run(
+                ["swift", "-", shot_path],
+                input=_SWIFT_OCR_CODE,
+                capture_output=True,
+                text=True,
+                timeout=20.0,
+                check=False,
+            )
         except subprocess.TimeoutExpired:
             raise IosError("Vision OCR timed out after 20s")
         except FileNotFoundError:
