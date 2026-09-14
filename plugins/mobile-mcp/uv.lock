@@ -305,14 +305,14 @@ wheels = [
 
 [[package]]
 name = "mobile-mcp"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "mcp" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "mcp", specifier = ">=1.0" }]
+requires-dist = [{ name = "mcp", specifier = ">=1.0,<3" }]
 
 [[package]]
 name = "opentelemetry-api"

@@ -2,18 +2,20 @@
 
 **[Live demo →](https://bibutikoley.github.io/claude-marketplace/)**
 
-Claude Code plugin marketplace. Currently ships two plugins: **apple-notes-mcp** —
-an MCP server giving CRUD access to Apple Notes on macOS
-(Python + `uv` + the official `mcp` SDK, driving Notes.app through JXA).
+Cross-platform MCP tools for AI coding agents — mobile device
+automation, Apple Notes, and more. Currently ships two plugins: **mobile-mcp**,
+a unified MCP server for cross-platform mobile device control covering
+both Android (ADB + `android` CLI) and iOS (Xcode `simctl` + `devicectl` +
+native Quartz UI automation; see
+[`plugins/mobile-mcp/README.md`](plugins/mobile-mcp/README.md)) —
+and **apple-notes-mcp**, an MCP server giving CRUD access to Apple Notes
+on macOS (Python + `uv` + the official `mcp` SDK, driving Notes.app
+through JXA).
 No RAG, no vector index, no Full Disk Access: Notes.app is the source of
 truth, queried live on every call, all locally. Works with Claude Code
 natively, and with any other MCP client (Claude Desktop, Cursor, VS Code,
 Windsurf, Cline, Roo Code, Codex CLI, Gemini CLI, opencode — see
-[`plugins/apple-notes-mcp/README.md`](plugins/apple-notes-mcp/README.md#other-agents)) —
-and **mobile-mcp**, a unified MCP server for cross-platform mobile device
-control covering both Android (ADB + `android` CLI) and iOS (Xcode `simctl` +
-`devicectl` + native Quartz UI automation; see
-[`plugins/mobile-mcp/README.md`](plugins/mobile-mcp/README.md)).
+[`plugins/apple-notes-mcp/README.md`](plugins/apple-notes-mcp/README.md#other-agents)).
 
 ## Prerequisites
 
@@ -45,35 +47,35 @@ On the first tool call, click **OK** on any macOS Automation prompts
 access the server needs.
 
 Standalone alternative (without the marketplace, no clone needed).
-Pinned to `v0.3.0` (recommended — reproducible; substitute a newer tag to upgrade):
+Pinned to `v0.4.0` (recommended — reproducible; substitute a newer tag to upgrade):
 
 ```bash
 # mobile-mcp
-claude mcp add mobile-mcp -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/mobile-mcp" mobile-mcp
+claude mcp add mobile-mcp -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.4.0#subdirectory=plugins/mobile-mcp" mobile-mcp
 
 # apple-notes-mcp
-claude mcp add apple-notes-mcp -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes-mcp" apple-notes-mcp
+claude mcp add apple-notes-mcp -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.4.0#subdirectory=plugins/apple-notes-mcp" apple-notes-mcp
 ```
 
 To track `main` instead (mutable — you get updates without bumping, but
-builds are not reproducible), drop the `@v0.3.0` from the URL.
+builds are not reproducible), drop the `@v0.4.0` from the URL.
 
 ### Other agents
 
 Any MCP client can run the servers over stdio — no marketplace needed. Just `uv` installed (provides `uvx`).
 
-Option A — no clone (recommended, pinned to `v0.3.0`):
+Option A — no clone (recommended, pinned to `v0.4.0`):
 
 ```json
 {
   "mcpServers": {
     "mobile-mcp": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
+      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.4.0#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
     },
     "apple-notes-mcp": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]
+      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.4.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"]
     }
   }
 }
@@ -94,11 +96,11 @@ opencode (`opencode.json` — project `./opencode.json` or global
   "mcp": {
     "mobile-mcp": {
       "type": "local",
-      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
+      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.4.0#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
     },
     "apple-notes-mcp": {
       "type": "local",
-      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"],
+      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.4.0#subdirectory=plugins/apple-notes-mcp", "apple-notes-mcp"],
       "environment": {
         "APPLE_NOTES_MCP_ALLOWED_FOLDERS": ""
       }
@@ -125,12 +127,24 @@ or [`plugins/apple-notes-mcp/README.md`](plugins/apple-notes-mcp/README.md#other
 
 ## Versioning
 
-`0.3.0` in `marketplace.json`, each plugin's `plugin.json` /
-`pyproject.toml`, and the MCP server strings (enforced by
-`scripts/validate_marketplace.py`). All install snippets default to the
-pinned `git+https://...@v0.3.0#subdirectory=...` form; drop the `@v0.3.0`
-to track `main`. Users receive updates when the version is bumped and a
-new tag is cut (`git tag vX.Y.Z`).
+`0.4.0` in `marketplace.json`, each plugin's `plugin.json` /
+`pyproject.toml`, and the MCP server strings. Releases are stamped with
+one command — `python3 scripts/bump_version.py <X.Y.Z>` (updates
+manifests, packaging, server strings, and pinned install URLs) — and
+checked by `scripts/validate_marketplace.py`. All install snippets
+default to the pinned `git+https://...@v0.4.0#subdirectory=...` form;
+drop the `@v0.4.0` to track `main`. Tag the release after CI passes
+(`git tag vX.Y.Z`).
+
+## Dependencies
+
+Each plugin pins reproducible installs with its own `uv.lock`
+(`uv sync --project plugins/<name>` reproduces CI exactly).
+`pyproject.toml` bounds are `mcp>=1.0,<3`, `markdown>=3.10.3,<4`,
+`markdownify>=1.2.3,<2`: lower bounds are the oldest verified working
+releases, upper bounds hold back the next major. To upgrade a
+dependency, bump the bound, run `uv lock --project plugins/<name>`,
+and let the ruff + mypy + pytest gate prove the new version safe.
 
 ## License
 

@@ -21,7 +21,7 @@ from mcp.types import CallToolResult, ImageContent, TextContent
 import android
 import ios
 
-mcp = MCPServer("mobile-mcp", version="0.3.0")
+mcp = MCPServer("mobile-mcp", version="0.4.0")
 
 
 def _ok(text: str, **extra) -> CallToolResult:

@@ -13,7 +13,7 @@ from mcp.types import CallToolResult, TextContent
 
 import notes
 
-mcp = MCPServer("apple-notes", version="0.3.0")
+mcp = MCPServer("apple-notes", version="0.4.0")
 
 
 def _ok(text: str, **extra) -> CallToolResult:

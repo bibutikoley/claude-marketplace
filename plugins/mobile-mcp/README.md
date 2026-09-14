@@ -112,11 +112,11 @@ Or add locally:
 claude mcp add mobile-mcp -s user -- uv run --project /path/to/claude-marketplace/plugins/mobile-mcp main.py
 ```
 
-Or standalone without a clone, pinned to `v0.3.0` (recommended — reproducible;
-drop `@v0.3.0` to track `main`):
+Or standalone without a clone, pinned to `v0.4.0` (recommended — reproducible;
+drop `@v0.4.0` to track `main`):
 
 ```bash
-claude mcp add mobile-mcp -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.3.0#subdirectory=plugins/mobile-mcp" mobile-mcp
+claude mcp add mobile-mcp -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.4.0#subdirectory=plugins/mobile-mcp" mobile-mcp
 ```
 
 ### Claude Desktop
@@ -161,6 +161,30 @@ In `.cursor/mcp.json` or `.vscode/mcp.json`:
 
 ---
 
+### Real devices (no emulator/simulator)
+
+**Android over USB:**
+
+1. On the phone: Settings → Developer options → enable **USB debugging**
+   (tap Build number 7× if Developer options is hidden).
+2. Plug in USB, then tap **Allow** on the "Allow USB debugging?" RSA
+   prompt (check "Always allow from this computer").
+3. Verify: `list_devices` shows the serial with state `device`. If several
+   devices are online, pass `serial=` explicitly or set `ADB_SERIAL`.
+4. Keep the screen awake during long runs (`wake_screen` dismisses the
+   keyguard). Prefer a test device — the server can wipe app data,
+   delete files, and reboot with one confirmed call.
+
+**Physical iPhone/iPad:**
+
+1. macOS with Xcode 15+, device trusted to the Mac (tap **Trust** on the
+   device prompt), iOS 17+.
+2. Verify: `ios_list_physical_devices` shows the device as paired, or
+   check `health_check` → iOS Environment.
+3. Target hardware explicitly: pass the `identifier` as `udid` with
+   `device_type="device"` (`ios_launch_app`, `ios_install_app`,
+   `ios_uninstall_app`, `ios_device_reboot`).
+
 ## Unified Diagnostics & Device Discovery
 
 ### `health_check`
@@ -199,11 +223,11 @@ Lists all connected Android phones, active emulators, booted iOS simulators, and
 |---|---|---|
 | `list_devices` | List connected Android phones & emulators | — |
 | `device_info` | Model, manufacturer, Android OS version, SDK level | `serial` |
-| `get_screen_size` | Physical screen resolution (e.g. 1080x2400) | `serial` |
-| `get_layout` | **Cheap structured accessibility tree** (buttons, text, bounds) | `serial` |
+| `current_app` | Focused foreground package/activity | `serial` |
+| `get_layout` | **Cheap structured accessibility tree** (buttons, text, bounds) | `serial`, `flat`, `full` |
 | `screenshot` | High-res PNG capture (inline image for visual inspection) | `serial`, `annotate`, `save_to` |
 | `tap` | Tap coordinate `(x, y)` | `x`, `y`, `serial` |
-| `tap_element` | OCR/accessibility selector tap (e.g. `input tap #2`) | `selector`, `screenshot_path` |
+| `tap_element` | Resolve `#N` labels from an annotated screenshot (`input tap #2`) | `template`, `screenshot_path`, `serial`, `execute` |
 | `double_tap` | Double tap coordinate | `x`, `y`, `serial` |
 | `long_press` | Press and hold coordinate | `x`, `y`, `duration_ms`, `serial` |
 | `swipe` | Gesture vector `(x1, y1) -> (x2, y2)` | `x1`, `y1`, `x2`, `y2`, `duration_ms` |
@@ -214,13 +238,17 @@ Lists all connected Android phones, active emulators, booted iOS simulators, and
 | `launch_app` | Launch app by package name, optionally a specific activity | `package`, `activity`, `serial` |
 | `force_stop` | Force stop package | `package`, `serial` |
 | `list_packages` | List third-party or system packages | `third_party_only`, `filter`, `serial` |
-| `install_apk` | Install single or split APK files | `host_path`, `serial` |
+| `install_apk` | Install single or split APK files | `host_path`, `serial`, `install_options` |
 | `uninstall_app` | Uninstall package (destructive — `confirm=true`) | `package`, `serial`, `confirm` |
+| `clear_app_data` | Wipe an app's data (destructive — `confirm=true`) | `package`, `serial`, `confirm` |
+| `reboot` | Reboot device (destructive — `confirm=true`) | `mode`, `serial`, `confirm` |
+| `logcat` | Recent device logs (or clear the buffer) | `serial`, `lines`, `clear` |
+| `get_prop` | Device properties (one or all) | `name`, `serial` |
 | `open_url` | Dispatch `android.intent.action.VIEW` deep link | `url`, `serial` |
 | `wake_screen` | Wake screen and dismiss keyguard | `serial` |
 | `open_notification_panel` | Expand notifications shade | `serial` |
 | `open_quick_settings` | Expand quick toggles shade | `serial` |
-| `emulator_list` / `emulator_start` | Manage local Android Virtual Devices | `name`, `wipe_data`, `headless` |
+| `emulator_list` / `emulator_start` / `emulator_stop` | Manage local Android Virtual Devices | `avd`, `cold`, `long`, `device` |
 | `push_file` / `pull_file` / `list_files` / `delete_file` | Safe device filesystem operations (`delete_file` needs `confirm=true`) | `host_src`, `device_dest`, `device_path`, `host_dest` |
 | `run_shell` | Escape hatch shell (opt-in whitelist protected) | `command`, `args`, `serial` |
 
@@ -240,7 +268,7 @@ Lists all connected Android phones, active emulators, booted iOS simulators, and
 | `ios_list_simulators` | List all available runtimes and simulators | `filter_runtime`, `filter_state` |
 | `ios_boot_simulator` | Boot simulator by UDID or name (optionally launches Simulator.app) | `udid`, `show_gui` |
 | `ios_shutdown_simulator` | Graceful shutdown of simulator | `udid` (optional if 1 booted) |
-| `ios_erase_simulator` | Factory reset / wipe simulator | `udid` |
+| `ios_erase_simulator` | Factory reset / wipe simulator (destructive — `confirm=true`) | `udid`, `confirm` |
 
 ### Simulator UI & Gesture Automation
 
@@ -250,7 +278,7 @@ Lists all connected Android phones, active emulators, booted iOS simulators, and
 | `ios_tap_element` | Tap on-screen element by index (e.g. `#1`, `1`) or text (e.g. `Settings`) | `selector`, `udid` |
 | `ios_screenshot` | Pixel-perfect headless PNG capture (returns inline image for visual inspection) | `udid`, `save_to` |
 | `ios_tap` | Tap screen coordinates `(x, y)` via Quartz CoreGraphics | `x`, `y`, `udid` |
-| `ios_swipe` | Drag gesture `(x1, y1) -> (x2, y2)` with duration | `x1`, `y1`, `x2`, `y2`, `duration_ms` |
+| `ios_swipe` | Drag gesture `(x1, y1) -> (x2, y2)` with duration | `x1`, `y1`, `x2`, `y2`, `duration_ms`, `udid` |
 | `ios_input_text` | Paste text into focused field via pasteboard + `Cmd+V` | `text`, `udid` |
 | `ios_press_button` | Hardware buttons (`home`, `lock`, `app_switcher`, `shake`, `volume_up`, `volume_down`, `rotate_left`, `rotate_right`) | `button`, `udid` |
 
@@ -261,7 +289,7 @@ Lists all connected Android phones, active emulators, booted iOS simulators, and
 | `ios_launch_app` | Launch app by bundle ID (Simulator or physical device) | `bundle_id`, `args`, `udid`, `device_type` |
 | `ios_terminate_app` | Terminate running app process | `bundle_id`, `udid`, `device_type` |
 | `ios_install_app` | Install `.app` (Simulator) or `.ipa`/`.app` (device) | `app_path`, `udid`, `device_type` |
-| `ios_uninstall_app` | Uninstall app by bundle ID | `bundle_id`, `udid`, `device_type` |
+| `ios_uninstall_app` | Uninstall app by bundle ID (destructive — `confirm=true`) | `bundle_id`, `udid`, `device_type`, `confirm` |
 | `ios_list_apps` | List installed applications on Simulator | `udid` |
 | `ios_get_app_container` | Resolve sandboxed path on disk (`app`, `data`, `groups`) | `bundle_id`, `container_type`, `udid` |
 | `ios_open_url` | Open URL or deep link scheme (e.g. `myapp://profile/123`) | `url`, `udid` |
@@ -285,7 +313,7 @@ Lists all connected Android phones, active emulators, booted iOS simulators, and
 |---|---|---|
 | `ios_list_physical_devices` | List connected iPhones/iPads with OS, build, pairing status | — |
 | `ios_device_info` | Detailed hardware properties and status for device | `device_uuid` |
-| `ios_device_reboot` | Reboot physical iOS device | `device_uuid` |
+| `ios_device_reboot` | Reboot physical iOS device (destructive — `confirm=true`) | `device_uuid`, `confirm` |
 
 ---
 
@@ -299,7 +327,7 @@ Verify that a universal deep link routes correctly on both platforms:
 Agent invocation:
 1. open_url("https://example.com/checkout?item=42") -> Android default browser / handler
 2. ios_open_url("https://example.com/checkout?item=42") -> iOS Safari / handler
-3. take_screenshot() -> inspect Android screen
+3. screenshot() -> inspect Android screen
 4. ios_screenshot() -> inspect iOS screen
 ```
 
