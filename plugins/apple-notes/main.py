@@ -15,7 +15,7 @@ from mcp.types import CallToolResult, TextContent
 
 import notes
 
-mcp = MCPServer("apple-notes", version="0.1.0")
+mcp = MCPServer("apple-notes", version="0.2.0")
 
 
 def _ok(text: str, **extra) -> CallToolResult:
@@ -26,7 +26,7 @@ def _ok(text: str, **extra) -> CallToolResult:
 
 
 @mcp.tool()
-def health_check() -> dict:
+def health_check() -> CallToolResult:
     """Verify Notes.app is reachable, automation permission is granted, and
     report the configured access scope (allowed folders, or unrestricted)."""
     try:
@@ -46,7 +46,7 @@ def health_check() -> dict:
 
 
 @mcp.tool()
-def list_folders() -> dict:
+def list_folders() -> CallToolResult:
     """List all folders as full paths (Account/Folder/Subfolder)."""
     try:
         folders = notes.list_folders()
@@ -57,7 +57,7 @@ def list_folders() -> dict:
 
 
 @mcp.tool()
-def list_notes(folder: str | None = None, limit: int = 50, modified_since: str | None = None) -> dict:
+def list_notes(folder: str | None = None, limit: int = 50, modified_since: str | None = None) -> CallToolResult:
     """List notes (id, title, folder, modified). Optionally filter by exact folder
     path (e.g. \"iCloud/Work\") or by ISO-8601 modified date (e.g. \"2026-09-01\")."""
     try:
@@ -73,7 +73,7 @@ def list_notes(folder: str | None = None, limit: int = 50, modified_since: str |
 
 
 @mcp.tool()
-def get_note(note_id: str, format: str = "markdown") -> dict:
+def get_note(note_id: str, format: str = "markdown") -> CallToolResult:
     """Get a note by its CoreData id (from list-notes / search-notes): title,
     HTML body, plaintext, folder, created/modified dates. With
     format="markdown" (default) also returns a Markdown rendering of the body;
@@ -97,7 +97,7 @@ def get_note(note_id: str, format: str = "markdown") -> dict:
 @mcp.tool()
 def create_note(
     title: str, content: str, folder: str | None = None, format: str = "markdown"
-) -> dict:
+) -> CallToolResult:
     """Create a note. `title` becomes the note title; `content` is Markdown by
     default (format="markdown") or plaintext (format="plaintext", newlines
     become line breaks). Optionally `folder`: exact folder path (e.g.
@@ -110,7 +110,7 @@ def create_note(
 
 
 @mcp.tool()
-def update_note(note_id: str, content: str, format: str = "markdown") -> dict:
+def update_note(note_id: str, content: str, format: str = "markdown") -> CallToolResult:
     """Replace a note's entire body. `content` is Markdown by default
     (format="markdown"); its first heading/line becomes the new title
     (Notes.app behavior). Use format="plaintext" for plain text. Use get_note
@@ -125,7 +125,7 @@ def update_note(note_id: str, content: str, format: str = "markdown") -> dict:
 @mcp.tool()
 def append_note(
     note_id: str, content: str, position: str = "after", format: str = "markdown"
-) -> dict:
+) -> CallToolResult:
     """Append (position="after", default) or prepend (position="before")
     content to a note without replacing what is already there. `content` is
     Markdown by default, plaintext with format="plaintext"."""
@@ -137,7 +137,7 @@ def append_note(
 
 
 @mcp.tool()
-def delete_note(note_id: str) -> dict:
+def delete_note(note_id: str) -> CallToolResult:
     """Delete a note (moves it to Recently Deleted). Irreversible from the
     agent's side — confirm the exact id with get_note/list_notes first."""
     try:
@@ -148,7 +148,7 @@ def delete_note(note_id: str) -> dict:
 
 
 @mcp.tool()
-def search_notes(query: str, search_content: bool = False, limit: int = 50) -> dict:
+def search_notes(query: str, search_content: bool = False, limit: int = 50) -> CallToolResult:
     """Search note titles (default). With search_content=true, also searches the
     body text — slower: every note's text is fetched. `query` is a plain
     substring, case-insensitive."""
@@ -162,7 +162,7 @@ def search_notes(query: str, search_content: bool = False, limit: int = 50) -> d
 
 
 @mcp.tool()
-def create_folder(name: str) -> dict:
+def create_folder(name: str) -> CallToolResult:
     """Create a folder at the default account's top level. Idempotent: an
     existing folder with the same name is left untouched."""
     try:
@@ -173,7 +173,7 @@ def create_folder(name: str) -> dict:
 
 
 @mcp.tool()
-def delete_folder(name: str) -> dict:
+def delete_folder(name: str) -> CallToolResult:
     """Delete a folder by name. Refuses if Notes.app refuses (a folder holding
     notes cannot be deleted this way). Irreversible — verify with list_folders."""
     try:

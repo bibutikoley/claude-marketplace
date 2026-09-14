@@ -13,6 +13,7 @@ See README.md for complete documentation and setup guides.
 from __future__ import annotations
 
 import base64
+import json
 
 from mcp.server.mcpserver import MCPServer
 from mcp.types import CallToolResult, ImageContent, TextContent
@@ -20,7 +21,7 @@ from mcp.types import CallToolResult, ImageContent, TextContent
 import android
 import ios
 
-mcp = MCPServer("mobile-mcp", version="0.1.0")
+mcp = MCPServer("mobile-mcp", version="0.2.0")
 
 
 def _ok(text: str, **extra) -> CallToolResult:
@@ -38,6 +39,18 @@ def _err(text: str, **extra) -> CallToolResult:
         is_error=True,
         structuredContent=extra if extra else None,
     )
+
+
+def _require_confirm(confirm: bool, op: str) -> CallToolResult | None:
+    """Server-side guard for destructive ops. Returns an error result when
+    confirm is not set, otherwise None (caller proceeds)."""
+    if not confirm:
+        return _err(
+            f"{op} is destructive. Re-invoke with confirm=true after user approval.",
+            operation=op,
+            confirm_required=True,
+        )
+    return None
 
 
 def _shot(text: str, png: bytes, path: str, **extra) -> CallToolResult:
@@ -416,8 +429,10 @@ def force_stop(package: str, serial: str | None = None) -> CallToolResult:
 
 
 @mcp.tool()
-def clear_app_data(package: str, serial: str | None = None) -> CallToolResult:
-    """Wipe an app's data. DESTRUCTIVE — confirm with the user first."""
+def clear_app_data(package: str, serial: str | None = None, confirm: bool = False) -> CallToolResult:
+    """Wipe an app's data. DESTRUCTIVE — requires confirm=true after user approval."""
+    if (denied := _require_confirm(confirm, "clear_app_data")) is not None:
+        return denied
     try:
         out = android.clear_app_data(package, serial)
         return _ok(f"Cleared data for {package}: {out}")
@@ -426,8 +441,10 @@ def clear_app_data(package: str, serial: str | None = None) -> CallToolResult:
 
 
 @mcp.tool()
-def uninstall_app(package: str, serial: str | None = None) -> CallToolResult:
-    """Remove an app. DESTRUCTIVE — confirm with the user first."""
+def uninstall_app(package: str, serial: str | None = None, confirm: bool = False) -> CallToolResult:
+    """Remove an app. DESTRUCTIVE — requires confirm=true after user approval."""
+    if (denied := _require_confirm(confirm, "uninstall_app")) is not None:
+        return denied
     try:
         out = android.uninstall_app(package, serial)
         return _ok(f"Uninstalled {package}: {out}")
@@ -485,9 +502,11 @@ def list_files(device_path: str, serial: str | None = None) -> CallToolResult:
 
 
 @mcp.tool()
-def delete_file(device_path: str, serial: str | None = None) -> CallToolResult:
+def delete_file(device_path: str, serial: str | None = None, confirm: bool = False) -> CallToolResult:
     """Delete a file on device. Refuses protected roots (/, /system, /data,
-    …). DESTRUCTIVE — confirm with the user first."""
+    …). DESTRUCTIVE — requires confirm=true after user approval."""
+    if (denied := _require_confirm(confirm, "delete_file")) is not None:
+        return denied
     try:
         android.delete_file(device_path, serial)
         return _ok(f"Deleted {device_path}.")
@@ -557,9 +576,11 @@ def get_prop(name: str | None = None, serial: str | None = None) -> CallToolResu
 
 
 @mcp.tool()
-def reboot(mode: str | None = None, serial: str | None = None) -> CallToolResult:
+def reboot(mode: str | None = None, serial: str | None = None, confirm: bool = False) -> CallToolResult:
     """Reboot the device. mode: bootloader | recovery | omit (normal).
-    DESTRUCTIVE — confirm with the user first."""
+    DESTRUCTIVE — requires confirm=true after user approval."""
+    if (denied := _require_confirm(confirm, "reboot")) is not None:
+        return denied
     try:
         return _ok(android.reboot(mode, serial))
     except android.AndroidError as e:
@@ -708,9 +729,9 @@ def file_list(device_path: str = "/sdcard", serial: str | None = None) -> CallTo
 
 
 @mcp.tool()
-def file_delete(device_path: str, serial: str | None = None) -> CallToolResult:
-    """Delete file on Android device (alias for delete_file)."""
-    return delete_file(device_path=device_path, serial=serial)
+def file_delete(device_path: str, serial: str | None = None, confirm: bool = False) -> CallToolResult:
+    """Delete file on Android device (alias for delete_file). DESTRUCTIVE — requires confirm=true."""
+    return delete_file(device_path=device_path, serial=serial, confirm=confirm)
 
 
 @mcp.tool()
@@ -817,8 +838,10 @@ def ios_shutdown_simulator(udid: str | None = None) -> CallToolResult:
 
 
 @mcp.tool()
-def ios_erase_simulator(udid: str | None = None) -> CallToolResult:
-    """Wipe an iOS Simulator to factory defaults (shuts down first if running)."""
+def ios_erase_simulator(udid: str | None = None, confirm: bool = False) -> CallToolResult:
+    """Wipe an iOS Simulator to factory defaults (shuts down first if running). DESTRUCTIVE — requires confirm=true."""
+    if (denied := _require_confirm(confirm, "ios_erase_simulator")) is not None:
+        return denied
     try:
         msg = ios.erase_simulator(udid)
         return _ok(msg)
@@ -981,8 +1004,11 @@ def ios_uninstall_app(
     bundle_id: str,
     udid: str | None = None,
     device_type: str = "simulator",
+    confirm: bool = False,
 ) -> CallToolResult:
-    """Uninstall application by bundle ID from simulator or physical device."""
+    """Uninstall application by bundle ID from simulator or physical device. DESTRUCTIVE — requires confirm=true."""
+    if (denied := _require_confirm(confirm, "ios_uninstall_app")) is not None:
+        return denied
     try:
         if device_type.lower() == "device":
             if not udid:
@@ -1153,8 +1179,10 @@ def ios_device_info(device_uuid: str) -> CallToolResult:
 
 
 @mcp.tool()
-def ios_device_reboot(device_uuid: str) -> CallToolResult:
-    """Reboot a physical iOS device via devicectl."""
+def ios_device_reboot(device_uuid: str, confirm: bool = False) -> CallToolResult:
+    """Reboot a physical iOS device via devicectl. DESTRUCTIVE — requires confirm=true."""
+    if (denied := _require_confirm(confirm, "ios_device_reboot")) is not None:
+        return denied
     try:
         msg = ios.reboot_device(device_uuid)
         return _ok(msg)

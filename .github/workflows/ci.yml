@@ -6,6 +6,36 @@ on:
   pull_request:
 
 jobs:
+  validate-marketplace:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate marketplace manifests
+        run: |
+          for f in .claude-plugin/marketplace.json plugins/mobile-mcp/.claude-plugin/plugin.json plugins/mobile-mcp/.mcp.json plugins/apple-notes/.claude-plugin/plugin.json plugins/apple-notes/.mcp.json; do
+            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))" && echo "OK: $f"
+          done
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate marketplace catalog
+        run: python3 scripts/validate_marketplace.py
+
+      - name: Compile plugins
+        run: |
+          python3 -m py_compile plugins/mobile-mcp/main.py plugins/mobile-mcp/android.py plugins/mobile-mcp/ios.py plugins/apple-notes/main.py plugins/apple-notes/notes.py
+
+      - name: Install test deps
+        run: pip install pytest mcp markdown markdownify
+
+      - name: Run plugin tests
+        run: python3 -m pytest plugins/mobile-mcp/tests plugins/apple-notes/tests -q
+
   test-and-build:
     runs-on: ubuntu-latest
     defaults:
@@ -27,13 +57,6 @@ jobs:
 
       - name: Audit dependencies
         run: npm audit --audit-level=high
-
-      - name: Validate marketplace manifests
-        run: |
-          for f in ../.claude-plugin/marketplace.json plugins/apple-notes/.claude-plugin/plugin.json plugins/apple-notes/.mcp.json; do
-            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))" && echo "OK: $f"
-          done
-        working-directory: .
 
       - name: Production build
         run: npm run build

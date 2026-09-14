@@ -27,10 +27,11 @@ class NotesError(Exception):
 # ---- access scope ----------------------------------------------------------
 # APPLE_NOTES_MCP_ALLOWED_FOLDERS restricts every tool to a folder allowlist:
 # comma-separated folder names or full paths (e.g. "Notes,iCloud/Work"). When
-# unset the server has unrestricted access. Entries match a folder if the full
-# path equals the entry, or the folder's leaf name equals the entry. A note is
-# in scope when its container's leaf name matches. No config files on disk —
-# the environment variable is the only source.
+# unset the server has unrestricted access. Canonical semantics:
+# - A full-path entry (contains "/") matches ONLY that exact Account/... path.
+# - A bare entry (no "/") matches any folder with that leaf name.
+# So "iCloud/Work" does NOT grant "On My Mac/Work". Prefer full paths.
+# No config files on disk — the environment variable is the only source.
 
 def _load_scope() -> frozenset[str]:
     raw = os.environ.get("APPLE_NOTES_MCP_ALLOWED_FOLDERS")
@@ -46,34 +47,92 @@ def scoped() -> bool:
     return bool(ALLOWED_FOLDERS)
 
 
+def _bare_entries() -> set[str]:
+    """Allowlist entries without a slash: these match by leaf name."""
+    return {entry for entry in ALLOWED_FOLDERS if "/" not in entry}
+
+
 def allowed_leaves() -> set[str]:
-    """Leaf folder names that count as in scope."""
-    return {entry.split("/")[-1] for entry in ALLOWED_FOLDERS}
+    """Bare entry names that count as in scope (full-path entries do NOT
+    contribute leaves — use is_allowed_folder() for path checks)."""
+    return set(_bare_entries())
 
 
-def require_folder_in_scope(leaf_name: str) -> None:
+def is_allowed_folder(full_path: str) -> bool:
+    """Canonical authorization: exact full-path match, or leaf match against
+    bare entries only. Unscoped (no allowlist) allows everything."""
+    if not scoped():
+        return True
+    if full_path in ALLOWED_FOLDERS:
+        return True
+    return full_path.split("/")[-1] in _bare_entries()
+
+
+def require_folder_in_scope(folder_ref: str) -> None:
+    """Enforce scope for a folder reference (full path or bare leaf).
+
+    Full paths require an exact allowlist match (or bare-leaf match).
+    Bare names keep legacy compatibility: allowed when the leaf matches any
+    entry's leaf — prefer full paths to be precise.
+    """
     if not scoped():
         return
-    if leaf_name not in allowed_leaves():
-        names = ", ".join(sorted(ALLOWED_FOLDERS)) or "(none)"
-        raise NotesError(
-            f"Folder '{leaf_name}' is outside the configured access scope "
-            f"(APPLE_NOTES_MCP_ALLOWED_FOLDERS={names})."
-        )
+    if "/" in folder_ref:
+        if is_allowed_folder(folder_ref):
+            return
+    else:
+        if folder_ref in _bare_entries() or folder_ref in {
+            e.split("/")[-1] for e in ALLOWED_FOLDERS
+        }:
+            return
+    names = ", ".join(sorted(ALLOWED_FOLDERS)) or "(none)"
+    raise NotesError(
+        f"Folder '{folder_ref}' is outside the configured access scope "
+        f"(APPLE_NOTES_MCP_ALLOWED_FOLDERS={names})."
+    )
+
+
+def _full_path_js(var_container: str = "c") -> str:
+    """JXA snippet: build Account/Folder/... full path from a folder object."""
+    return (
+        f"var parts = [{var_container}.name()];\n"
+        f"var p = null;\n"
+        f"try {{ p = {var_container}.container(); }} catch (e) {{ p = null; }}\n"
+        "var guard = 0;\n"
+        "while (p && guard < 10) {\n"
+        "    guard++;\n"
+        "    try { parts.unshift(p.name());\n"
+        f"        p = (typeof p.container !== 'undefined') ? p.container() : null; }}\n"
+        "    catch (e) { break; }\n"
+        "}\n"
+        "parts.join('/')"
+    )
 
 
 def _require_note_in_scope(note_id: str) -> str:
-    """Resolve a note's container leaf and enforce the allowlist. Returns the leaf."""
+    """Resolve a note's canonical folder full path and enforce the allowlist.
+    Returns the full path."""
     js = _PREAMBLE + (
         "var n = Notes.notes.byId(__ID__);\n"
         "var c = n.container();\n"
-        "JSON.stringify(c ? c.name() : null);"
+        "if (!c) { JSON.stringify(null); }\n"
+        "else {\n"
+        + _full_path_js("c") + ";\n"
+        "JSON.stringify(parts.join('/'));\n"
+        "}"
     ).replace("__ID__", _js(note_id))
-    leaf = json.loads(_run_jxa(js))
-    if leaf is None:
+    full = json.loads(_run_jxa(js))
+    if full is None:
         raise NotesError("note not found (may be purged from Recently Deleted)")
-    require_folder_in_scope(leaf)
-    return leaf
+    if not scoped():
+        return full
+    if not is_allowed_folder(full):
+        names = ", ".join(sorted(ALLOWED_FOLDERS)) or "(none)"
+        raise NotesError(
+            f"Folder '{full}' is outside the configured access scope "
+            f"(APPLE_NOTES_MCP_ALLOWED_FOLDERS={names})."
+        )
+    return full
 
 
 def _run_jxa(script: str, timeout: float | None = None) -> str:
@@ -183,12 +242,28 @@ def _make_note_js(title: str, body_html: str, folder: str | None) -> str:
 _GET_NOTE_JS = _PREAMBLE + r"""
 var n = Notes.notes.byId(__ID__);
 var container = n.container();
+var folderLeaf = container ? container.name() : null;
+var folderFull = null;
+if (container) {
+    var parts = [container.name()];
+    var p = null;
+    try { p = container.container(); } catch (e) { p = null; }
+    var guard = 0;
+    while (p && guard < 10) {
+        guard++;
+        try { parts.unshift(p.name());
+            p = (typeof p.container !== 'undefined') ? p.container() : null; }
+        catch (e) { break; }
+    }
+    folderFull = parts.join('/');
+}
 JSON.stringify({
     id: n.id(),
     name: n.name(),
     body: n.body(),
     plaintext: n.plaintext(),
-    folder: container ? container.name() : null,
+    folder: folderLeaf,
+    folder_full: folderFull,
     created: new Date(n.creationDate()).toISOString(),
     modified: new Date(n.modificationDate()).toISOString()
 });
@@ -246,8 +321,7 @@ def _health_js() -> str:
 def list_folders() -> list[str]:
     paths = json.loads(_run_jxa(_LIST_FOLDERS))
     if scoped():
-        leaves = allowed_leaves()
-        paths = [p for p in paths if p in ALLOWED_FOLDERS or p.split("/")[-1] in leaves]
+        paths = [p for p in paths if is_allowed_folder(p)]
     return paths
 
 
@@ -266,7 +340,7 @@ def create_note(
             f"(allowed: {', '.join(sorted(ALLOWED_FOLDERS))})."
         )
     if folder is not None:
-        require_folder_in_scope(folder.split("/")[-1])
+        require_folder_in_scope(folder)
     body_html = content_to_html(content, format)
     html = f"<h1>{_escape(title)}</h1>"
     if body_html:
@@ -276,7 +350,19 @@ def create_note(
 
 def get_note(note_id: str, format: str = DEFAULT_FORMAT) -> dict:
     n = json.loads(_run_jxa(_GET_NOTE_JS.replace("__ID__", _js(note_id))))
-    require_folder_in_scope(n["folder"])
+    if n.get("folder") is None and n.get("folder_full") is None:
+        raise NotesError("note not found (may be purged from Recently Deleted)")
+    if scoped():
+        if n.get("folder_full"):
+            if not is_allowed_folder(n["folder_full"]):
+                require_folder_in_scope(n["folder_full"])
+        else:
+            require_folder_in_scope(n.get("folder") or "")
+    # Canonicalize: folder is the full Account/... path (matches list_folders);
+    # folder_leaf keeps the immediate container for backward compatibility.
+    if n.get("folder_full"):
+        n["folder_leaf"] = n.get("folder")
+        n["folder"] = n["folder_full"]
     if validate_format(format) == "markdown":
         n["markdown"] = html_to_markdown(n.get("body", ""))
     return n
@@ -321,12 +407,12 @@ def create_folder(name: str) -> dict:
 
 
 def delete_folder(name: str) -> None:
-    require_folder_in_scope(name.split("/")[-1])
+    require_folder_in_scope(name)
     _run_jxa(_delete_folder_js(name))
 
 
 def _folders_for(note_ids: list[str]) -> list[str | None]:
-    """Folders for specific notes, one AppleScript call, inside-JS loop."""
+    """Canonical folder full paths for specific notes, one AppleScript call."""
     if not note_ids:
         return []
     ids_js = ",".join(_js(i) for i in note_ids)
@@ -334,8 +420,21 @@ def _folders_for(note_ids: list[str]) -> list[str | None]:
         "var ids = [" + ids_js + "];\n"
         "var out = [];\n"
         "for (var i = 0; i < ids.length; i++) {\n"
-        "    var c = Notes.notes.byId(ids[i]).container();\n"
-        "    out.push(c ? c.name() : null);\n"
+        "    try {\n"
+        "        var c = Notes.notes.byId(ids[i]).container();\n"
+        "        if (!c) { out.push(null); continue; }\n"
+        "        var parts = [c.name()];\n"
+        "        var p = null;\n"
+        "        try { p = c.container(); } catch (e) { p = null; }\n"
+        "        var guard = 0;\n"
+        "        while (p && guard < 10) {\n"
+        "            guard++;\n"
+        "            try { parts.unshift(p.name());\n"
+        "                p = (typeof p.container !== 'undefined') ? p.container() : null; }\n"
+        "            catch (e) { break; }\n"
+        "        }\n"
+        "        out.push(parts.join('/'));\n"
+        "    } catch (e) { out.push(null); }\n"
         "}\n"
         "JSON.stringify(out);"
     )
@@ -347,9 +446,10 @@ def list_notes(
     limit: int = 50,
     modified_since: str | None = None,
 ) -> list[dict]:
-    """List notes (id, name, folder, modified). Optionally filter by exact folder
-    name (the immediate container, e.g. \"Notes\" or \"Recently Deleted\") or by
-    ISO-8601 modified date (e.g. \"2026-09-01\")."""
+    """List notes (id, name, folder, modified). `folder` accepts a full path
+    (e.g. "iCloud/Work") or a bare leaf (e.g. "Work"); folder is the canonical
+    Account/... full path. Optionally filter by ISO-8601 modified date
+    (e.g. "2026-09-01")."""
     js = _PREAMBLE + (
         "var ids = Notes.notes.id();\n"
         "var names = Notes.notes.name();\n"
@@ -367,11 +467,16 @@ def list_notes(
         for n, c in zip(all_notes, container_names):
             n["folder"] = c
     if scoped():
-        leaves = allowed_leaves()
-        all_notes = [n for n in all_notes if n.get("folder") in leaves]
-    # Filter by folder (immediate container name)
+        all_notes = [n for n in all_notes if n.get("folder") and is_allowed_folder(n["folder"])]
+    # Filter by folder: full path exact, or bare leaf suffix match.
     if folder is not None:
-        all_notes = [n for n in all_notes if n.get("folder") == folder]
+        if "/" in folder:
+            all_notes = [n for n in all_notes if n.get("folder") == folder]
+        else:
+            all_notes = [
+                n for n in all_notes
+                if (n.get("folder") or "").split("/")[-1] == folder
+            ]
     # Filter by modified_since
     if modified_since:
         all_notes = [n for n in all_notes if n["modified"] >= modified_since]
@@ -405,8 +510,7 @@ def search_notes(query: str, search_content: bool, limit: int) -> list[dict]:
         for m, c in zip(matches, container_names):
             m["folder"] = c
     if scoped():
-        leaves = allowed_leaves()
-        matches = [m for m in matches if m.get("folder") in leaves]
+        matches = [m for m in matches if m.get("folder") and is_allowed_folder(m["folder"])]
     return matches[:limit]
 
 

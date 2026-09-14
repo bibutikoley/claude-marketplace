@@ -44,32 +44,36 @@ On the first tool call, click **OK** on any macOS Automation prompts
 (e.g., "‹your terminal› would like to control Notes"). That grant is all the
 access the server needs.
 
-Standalone alternative (without the marketplace, no clone needed):
+Standalone alternative (without the marketplace, no clone needed).
+Pinned to `v0.2.0` (recommended — reproducible; substitute a newer tag to upgrade):
 
 ```bash
 # mobile-mcp
-claude mcp add mobile-mcp -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/mobile-mcp" mobile-mcp
+claude mcp add mobile-mcp -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.2.0#subdirectory=plugins/mobile-mcp" mobile-mcp
 
 # apple-notes
-claude mcp add apple-notes -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes" apple-notes-mcp
+claude mcp add apple-notes -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.2.0#subdirectory=plugins/apple-notes" apple-notes-mcp
 ```
+
+To track `main` instead (mutable — you get updates without bumping, but
+builds are not reproducible), drop the `@v0.2.0` from the URL.
 
 ### Other agents
 
 Any MCP client can run the servers over stdio — no marketplace needed. Just `uv` installed (provides `uvx`).
 
-Option A — no clone (recommended):
+Option A — no clone (recommended, pinned to `v0.2.0`):
 
 ```json
 {
   "mcpServers": {
     "mobile-mcp": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
+      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.2.0#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
     },
     "apple-notes": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"]
+      "args": ["--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.2.0#subdirectory=plugins/apple-notes", "apple-notes-mcp"]
     }
   }
 }
@@ -90,11 +94,11 @@ opencode (`opencode.json` — project `./opencode.json` or global
   "mcp": {
     "mobile-mcp": {
       "type": "local",
-      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
+      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.2.0#subdirectory=plugins/mobile-mcp", "mobile-mcp"]
     },
     "apple-notes": {
       "type": "local",
-      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace#subdirectory=plugins/apple-notes", "apple-notes-mcp"],
+      "command": ["uvx", "--from", "git+https://github.com/bibutikoley/claude-marketplace@v0.2.0#subdirectory=plugins/apple-notes", "apple-notes-mcp"],
       "environment": {
         "APPLE_NOTES_MCP_ALLOWED_FOLDERS": ""
       }
@@ -121,8 +125,12 @@ or [`plugins/apple-notes/README.md`](plugins/apple-notes/README.md#other-agents)
 
 ## Versioning
 
-The plugin is version-pinned (`0.1.0` in both `marketplace.json` and the
-plugin's `plugin.json`). Users receive updates when the version is bumped.
+`0.2.0` in `marketplace.json`, each plugin's `plugin.json` /
+`pyproject.toml`, and the MCP server strings (enforced by
+`scripts/validate_marketplace.py`). All install snippets default to the
+pinned `git+https://...@v0.2.0#subdirectory=...` form; drop the `@v0.2.0`
+to track `main`. Users receive updates when the version is bumped and a
+new tag is cut (`git tag vX.Y.Z`).
 
 ## License
 

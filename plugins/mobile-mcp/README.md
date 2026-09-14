@@ -112,6 +112,13 @@ Or add locally:
 claude mcp add mobile-mcp -s user -- uv run --project /path/to/claude-marketplace/plugins/mobile-mcp main.py
 ```
 
+Or standalone without a clone, pinned to `v0.2.0` (recommended — reproducible;
+drop `@v0.2.0` to track `main`):
+
+```bash
+claude mcp add mobile-mcp -s user -- uvx --from "git+https://github.com/bibutikoley/claude-marketplace@v0.2.0#subdirectory=plugins/mobile-mcp" mobile-mcp
+```
+
 ### Claude Desktop
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
@@ -314,6 +321,7 @@ Simulate user arrival in San Francisco:
 2. **Bundle & Package Sanitization**: Every package name and bundle ID is verified against strict alphanumeric and reverse-DNS schemas (`^[a-zA-Z0-9.\-_]+$`).
 3. **Protected Roots for Filesystem Ops**: Destructive operations (`file_delete`, `file_push`) strictly forbid targeting system partitions (`/system`, `/vendor`, `/dev`).
 4. **Opt-In Shell**: `run_shell` is disabled by default and requires setting `ANDROID_ADB_ALLOW_SHELL=1` in your environment.
+5. **Destructive-operation confirmation**: `uninstall_app`, `clear_app_data`, `delete_file`/`file_delete`, `reboot`, `ios_erase_simulator`, `ios_uninstall_app`, and `ios_device_reboot` are server-side gated — they refuse with a `confirm_required` error unless called with `confirm=true` after user approval.
 
 ---
 
